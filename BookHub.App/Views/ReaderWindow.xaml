@@ -1,0 +1,787 @@
+<Window x:Class="BookHub.App.Views.ReaderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
+        xmlns:vm="clr-namespace:BookHub.App.ViewModels"
+        Title="{Binding ActiveTab.Book.Title, StringFormat='{}{0} — BookHub Reader'}"
+        Width="1360" Height="880"
+        WindowStartupLocation="Manual"
+        Background="{DynamicResource BgPrimaryBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Scrollable tabs and fixed reader controls -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgPrimaryBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,5"
+                Visibility="{Binding IsFullScreen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
+            <Grid Height="32">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0" Margin="0,0,10,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="LeftTabOverflowButton"
+                            Grid.Column="0"
+                            Content="◀ 0"
+                            Height="30"
+                            MinWidth="48"
+                            Padding="5,0"
+                            Margin="0,0,4,0"
+                            Visibility="Collapsed"
+                            Background="{DynamicResource BgCardBrush}"
+                            Foreground="{DynamicResource TextPrimaryBrush}"
+                            Click="LeftTabOverflowButton_Click" />
+                    <ScrollViewer x:Name="TabStripScrollViewer"
+                                  Grid.Column="1"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled"
+                                  ScrollChanged="TabStripScrollViewer_ScrollChanged"
+                                  SizeChanged="TabStripScrollViewer_SizeChanged"
+                                  PreviewMouseWheel="TabStripScrollViewer_PreviewMouseWheel">
+                        <ListBox x:Name="TabListBox"
+                                 ItemsSource="{Binding OpenTabs}"
+                                 SelectedItem="{Binding ActiveTab}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 ScrollViewer.CanContentScroll="False"
+                                 SelectionMode="Single">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Focusable" Value="False" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource BgCardBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="5"
+                                            Padding="8,2"
+                                            Margin="0,0,5,0"
+                                            Height="30"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Закрити цю вкладку"
+                                                          InputGestureText="Ctrl+W"
+                                                          Command="{Binding PlacementTarget.Tag.CloseTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="Закрити інші вкладки"
+                                                          Command="{Binding PlacementTarget.Tag.CloseOtherTabsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="Закрити всі вкладки"
+                                                          Command="{Binding PlacementTarget.Tag.CloseAllTabsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TabTitle}"
+                                                       ToolTip="{Binding Book.Title}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,7,0" />
+                                            <Button Content="×"
+                                                    Width="20"
+                                                    Height="24"
+                                                    Padding="0"
+                                                    FontSize="15"
+                                                    VerticalAlignment="Center"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                    <Button x:Name="RightTabOverflowButton"
+                            Grid.Column="2"
+                            Content="0 ▶"
+                            Height="30"
+                            MinWidth="48"
+                            Padding="5,0"
+                            Margin="4,0"
+                            Visibility="Collapsed"
+                            Background="{DynamicResource BgCardBrush}"
+                            Foreground="{DynamicResource TextPrimaryBrush}"
+                            Click="RightTabOverflowButton_Click" />
+                    <Button Grid.Column="3"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Content="+"
+                            ToolTip="Відкрити нову вкладку"
+                            Command="{Binding OpenAnotherFileInTabCommand}"
+                            Width="32"
+                            Height="30"
+                            Padding="0"
+                            Margin="4,0,0,0" />
+                </Grid>
+
+                <!-- Right: View Modes & Split-View & Theme -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="1 Стор." ToolTip="Одна сторінка" Command="{Binding SetViewModeCommand}" CommandParameter="SinglePage" Margin="0,0,4,0" Padding="7,2" Height="30" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="Розворот" ToolTip="Книжковий розворот (дві сторінки)" Command="{Binding SetViewModeCommand}" CommandParameter="TwoPageSpread" Margin="0,0,4,0" Padding="7,2" Height="30" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="Безперервний" ToolTip="Вертикальний безперервний скрол" Command="{Binding SetViewModeCommand}" CommandParameter="ContinuousVertical" Margin="0,0,8,0" Padding="7,2" Height="30" />
+
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="◫ Split-View" ToolTip="Розділений екран для паралельного читання" Command="{Binding ToggleSplitViewCommand}" Margin="0,0,8,0" Padding="7,2" Height="30" />
+
+                    <ComboBox ItemsSource="{Binding ThemeNames}"
+                              SelectedItem="{Binding SelectedThemeName}"
+                              Width="148"
+                              VerticalAlignment="Center"
+                              Height="30"
+                              ToolTip="Колірна схема рідера" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Row 1: Flexible Non-Overlapping Reader Toolbar (3 Clear Zones) -->
+        <Border Grid.Row="1"
+                Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,4"
+                Visibility="{Binding IsFullScreen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
+            <Grid Height="44" Margin="8,4">
+                <Grid.ColumnDefinitions>
+                    <!-- Ліва зона: Бічні панелі та навігація -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Центральна зона: Сторінки та Масштаб -->
+                    <ColumnDefinition Width="*" />
+                    <!-- Права зона: Інструменти, Експорт, Екран -->
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Ліва зона -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource ModernButtonStyle}"
+                            Content="📑 Зміст"
+                            ToolTip="Згорнути / Розгорнути панель змісту (TOC)"
+                            Command="{Binding ToggleTocCommand}"
+                            Margin="0,0,6,0" />
+                    <Button Style="{StaticResource ModernButtonStyle}"
+                            Content="📝 Нотатки"
+                            ToolTip="Панель маркерів, нотаток та експорту в Obsidian"
+                            Command="{Binding ToggleAnnotationsCommand}"
+                            Margin="0,0,12,0" />
+                </StackPanel>
+
+                <!-- Центральна зона (центрується по горизонталі) -->
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="⏮" Command="{Binding FirstPageCommand}" ToolTip="На початок (Home)" Margin="2,0" Padding="8,4" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="◀" Command="{Binding PreviousPageCommand}" ToolTip="Попередня сторінка (PageUp)" Margin="2,0" Padding="8,4" />
+
+                    <!-- Введення номера сторінки -->
+                    <TextBox Width="48"
+                             Style="{StaticResource ModernTextBoxStyle}"
+                             Text="{Binding ActiveTab.PageJumpInput, UpdateSourceTrigger=PropertyChanged}"
+                             TextAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             Margin="4,0"
+                             Padding="2,3"
+                             KeyDown="PageJumpTextBox_KeyDown" />
+                    <TextBlock Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="{Binding ActiveTab.TotalPages, StringFormat='/ {0}'}"
+                               VerticalAlignment="Center"
+                               Margin="4,0,8,0"
+                               FontWeight="SemiBold" />
+
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="▶" Command="{Binding NextPageCommand}" ToolTip="Наступна сторінка (PageDown)" Margin="2,0" Padding="8,4" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="⏭" Command="{Binding LastPageCommand}" ToolTip="В кінець (End)" Margin="2,0,16,0" Padding="8,4" />
+
+                    <!-- Блок масштабу -->
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="🔍-" Command="{Binding ZoomOutCommand}" ToolTip="Зменшити" Margin="2,0" Padding="7,4" />
+                    <ComboBox ItemsSource="{Binding ZoomPresets}"
+                              SelectedItem="{Binding SelectedZoomPreset}"
+                              DisplayMemberPath="Label"
+                              SelectedIndex="0"
+                              Width="130"
+                              Margin="2,0"
+                              VerticalAlignment="Center"
+                              ToolTip="Режим масштабування" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="🔍+" Command="{Binding ZoomInCommand}" ToolTip="Збільшити" Margin="2,0" Padding="7,4" />
+                </StackPanel>
+
+                <!-- Права зона -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
+                                  Content="🖊 Виділення"
+                                  IsChecked="{Binding IsTextSelectionMode}"
+                                  ToolTip="Режим виділення тексту"
+                                  Margin="4,0" />
+                    <Button Style="{StaticResource ModernButtonStyle}"
+                            Content="🔖 Закладка"
+                            ToolTip="Додати закладку на поточну сторінку"
+                            Command="{Binding AddQuickBookmarkCommand}"
+                            Margin="4,0" />
+                    <Button Style="{StaticResource ModernButtonStyle}"
+                            Content="🖨 Друк"
+                            ToolTip="Роздрукувати поточну сторінку"
+                            Command="{Binding PrintCurrentPageCommand}"
+                            Margin="4,0" />
+                    <Button Style="{StaticResource ModernButtonStyle}"
+                            Content="⛶ F11"
+                            ToolTip="Повний екран (F11 або F)"
+                            Command="{Binding ToggleFullScreenCommand}"
+                            Margin="4,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Row 2: Main Workspace (Resizable TOC Sidebar + GridSplitter + Primary Viewport + Optional Split Viewport + GridSplitter + Annotations Drawer) -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="TocSidebarColumn" Width="285" MinWidth="180" MaxWidth="500" />
+                <ColumnDefinition x:Name="TocSplitterColumn" Width="5" />
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition x:Name="NotesSplitterColumn" Width="5" />
+                <ColumnDefinition x:Name="NotesSidebarColumn" Width="320" MinWidth="200" MaxWidth="600" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Col 0: Left TOC Sidebar (MinWidth=180, MaxWidth=500, Collapsible) -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource BgSecondaryBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="0,0,1,0"
+                    Visibility="{Binding IsTocVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Padding="12,8" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <TextBlock Text="Зміст документа (TOC)" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <Button Content="◀"
+                                    HorizontalAlignment="Right"
+                                    Padding="6,2"
+                                    FontSize="10.5"
+                                    ToolTip="Згорнути панель змісту"
+                                    Style="{StaticResource ModernButtonStyle}"
+                                    Command="{Binding ToggleTocCommand}" />
+                        </Grid>
+                    </Border>
+                    <TreeView x:Name="TocTreeView"
+                              ItemsSource="{Binding ActiveTab.TableOfContents}"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Padding="6"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              SelectedItemChanged="TocTreeView_SelectedItemChanged">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                <Setter Property="FontSize" Value="12.5" />
+                                <Setter Property="Padding" Value="4,4" />
+                                <Setter Property="IsExpanded" Value="True" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type models:TocItem}" ItemsSource="{Binding Children}">
+                                <Grid Margin="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" />
+                                    <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                        <TextBlock Text="{Binding PageNumber}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                </DockPanel>
+            </Border>
+
+            <!-- Col 1: Interactive GridSplitter between TOC and Page Viewport -->
+            <GridSplitter x:Name="TocGridSplitter"
+                          Grid.Column="1"
+                          Width="5"
+                          HorizontalAlignment="Stretch"
+                          Background="{DynamicResource BorderSubtleBrush}"
+                          ShowsPreview="False"
+                          Visibility="{Binding IsTocVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <!-- Col 2: Center Reader Area (Supports Single View or Split-View) -->
+            <Grid Grid.Column="2" Background="{DynamicResource ReaderViewportBgBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Primary Active Tab Viewport (Tracks SizeChanged to smoothly Fit-to-Width) -->
+                <Grid x:Name="PrimaryViewportHost"
+                      Grid.Column="0"
+                      DataContext="{Binding ActiveTab}"
+                      SizeChanged="PrimaryViewportHost_SizeChanged">
+
+                    <!-- PDF Single Page / Two-Page Spread -->
+                    <Grid Visibility="{Binding IsPdfMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ScrollViewer x:Name="PdfScrollViewer"
+                                  Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
+                                  HorizontalScrollBarVisibility="{Binding HorizontalScrollVisibility}"
+                                  VerticalScrollBarVisibility="Auto"
+                                  PreviewMouseWheel="PdfScrollViewer_PreviewMouseWheel"
+                                  ScrollChanged="PagedScrollViewer_ScrollChanged">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="14">
+                            <!-- Single Page -->
+                            <Border Visibility="{Binding IsSinglePageMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Background="{DynamicResource ReaderPageBgBrush}"
+                                    CornerRadius="2">
+                                <Grid>
+                                    <Image Source="{Binding CurrentPageImage}"
+                                           Width="{Binding ComputedPageDisplayWidth}"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <TextBox x:Name="PdfTextSelectionBox"
+                                             Text="{Binding CurrentPageText, Mode=OneWay}"
+                                             Width="{Binding ComputedPageDisplayWidth}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             Foreground="Transparent"
+                                             BorderThickness="0"
+                                             TextWrapping="Wrap"
+                                             FontSize="14"
+                                             SelectionBrush="{DynamicResource AccentBrush}"
+                                             SelectionOpacity="0.4"
+                                             Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                             IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                             SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Two-Page Spread -->
+                            <StackPanel Orientation="Horizontal"
+                                        Visibility="{Binding IsTwoPageSpreadMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border Background="{DynamicResource ReaderPageBgBrush}" Margin="0,0,12,0" CornerRadius="2">
+                                    <Grid>
+                                        <Image Source="{Binding CurrentPageImage}"
+                                               Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <TextBox Text="{Binding CurrentPageText, Mode=OneWay}"
+                                                 Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                                 IsReadOnly="True"
+                                                 Background="Transparent"
+                                                 Foreground="Transparent"
+                                                 BorderThickness="0"
+                                                 TextWrapping="Wrap"
+                                                 FontSize="13"
+                                                 SelectionBrush="{DynamicResource AccentBrush}"
+                                                 SelectionOpacity="0.4"
+                                                 Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                                 IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                    </Grid>
+                                </Border>
+                                <Border Background="{DynamicResource ReaderPageBgBrush}" CornerRadius="2">
+                                    <Grid>
+                                        <Image Source="{Binding SecondSpreadPageImage}"
+                                               Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <TextBox Text="{Binding SecondSpreadPageText, Mode=OneWay}"
+                                                 Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                                 IsReadOnly="True"
+                                                 Background="Transparent"
+                                                 Foreground="Transparent"
+                                                 BorderThickness="0"
+                                                 TextWrapping="Wrap"
+                                                 FontSize="13"
+                                                 SelectionBrush="{DynamicResource AccentBrush}"
+                                                 SelectionOpacity="0.4"
+                                                 Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                                 IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                        </Grid>
+                    </ScrollViewer>
+                    <ListBox x:Name="PdfContinuousListBox"
+                             ItemsSource="{Binding ContinuousWindowPages}"
+                             Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingStackPanel.IsVirtualizing="True"
+                             VirtualizingStackPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             ScrollViewer.ScrollChanged="ContinuousListBox_ScrollChanged"
+                             PreviewMouseWheel="PdfScrollViewer_PreviewMouseWheel">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="Focusable" Value="False" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ContinuousPageViewModel}">
+                                <Border Width="{Binding DataContext.ComputedPageDisplayWidth, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        Height="{Binding DataContext.ContinuousPageItemHeight, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        Background="{DynamicResource ReaderPageBgBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="12"
+                                        Margin="0">
+                                    <Grid>
+                                        <Image Source="{Binding PageBitmap}"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <TextBlock Text="{Binding PageNumber, StringFormat='Сторінка {0}'}"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Bottom"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Background="{DynamicResource BgCardBrush}"
+                                                   Padding="5,2"
+                                                   FontSize="10" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    </Grid>
+
+                    <!-- Text / EPUB / FB2 / DOCX / MD Viewport (Adaptive Fit-to-Width without clipping or horizontal scrollbar) -->
+                    <Grid Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ScrollViewer x:Name="TextScrollViewer"
+                                  Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="{Binding HorizontalScrollVisibility}"
+                                  PreviewMouseWheel="PdfScrollViewer_PreviewMouseWheel"
+                                  ScrollChanged="PagedScrollViewer_ScrollChanged">
+                        <Grid HorizontalAlignment="Center" Margin="14">
+                            <!-- Single Page Text -->
+                            <Border Width="{Binding ComputedPageDisplayWidth}"
+                                    Visibility="{Binding IsSinglePageMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Background="{DynamicResource ReaderPageBgBrush}"
+                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="36,30">
+                                <TextBox x:Name="ReaderTextBox"
+                                         Text="{Binding CurrentPageText, Mode=OneWay}"
+                                         IsReadOnly="True"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource ReaderPageTextBrush}"
+                                         BorderThickness="0"
+                                         TextWrapping="Wrap"
+                                         FontSize="{Binding TextFontSize}"
+                                         FontFamily="Georgia, Segoe UI"
+                                         Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                         SelectionChanged="ReaderTextBox_SelectionChanged" />
+                            </Border>
+
+                            <!-- Two-Page Spread Text -->
+                            <StackPanel Orientation="Horizontal"
+                                        Visibility="{Binding IsTwoPageSpreadMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                        Margin="0,0,12,0"
+                                        Background="{DynamicResource ReaderPageBgBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="28,24">
+                                    <TextBox Text="{Binding CurrentPageText, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             Foreground="{DynamicResource ReaderPageTextBrush}"
+                                             BorderThickness="0"
+                                             TextWrapping="Wrap"
+                                             FontSize="{Binding TextFontSize}"
+                                             FontFamily="Georgia, Segoe UI"
+                                             Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                             SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                </Border>
+                                <Border Width="{Binding ComputedSpreadPageDisplayWidth}"
+                                        Background="{DynamicResource ReaderPageBgBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="28,24">
+                                    <TextBox Text="{Binding SecondSpreadPageText, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             Foreground="{DynamicResource ReaderPageTextBrush}"
+                                             BorderThickness="0"
+                                             TextWrapping="Wrap"
+                                             FontSize="{Binding TextFontSize}"
+                                             FontFamily="Georgia, Segoe UI"
+                                             Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
+                                             SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                </Border>
+                            </StackPanel>
+
+                        </Grid>
+                    </ScrollViewer>
+                    <ListBox x:Name="TextContinuousListBox"
+                             ItemsSource="{Binding ContinuousWindowPages}"
+                             Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingStackPanel.IsVirtualizing="True"
+                             VirtualizingStackPanel.VirtualizationMode="Recycling"
+                             VirtualizingPanel.ScrollUnit="Pixel"
+                             ScrollViewer.ScrollChanged="ContinuousListBox_ScrollChanged"
+                             PreviewMouseWheel="PdfScrollViewer_PreviewMouseWheel">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="Focusable" Value="False" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ContinuousPageViewModel}">
+                                <Border Width="{Binding DataContext.ComputedPageDisplayWidth, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        Height="{Binding DataContext.ContinuousPageItemHeight, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        Background="{DynamicResource ReaderPageBgBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="24,18"
+                                        Margin="0">
+                                    <Grid>
+                                        <TextBlock Text="{Binding PageText}"
+                                                   Foreground="{DynamicResource ReaderPageTextBrush}"
+                                                   FontSize="{Binding DataContext.TextFontSize, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                   FontFamily="Georgia, Segoe UI"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Top" />
+                                        <TextBlock Text="{Binding PageNumber, StringFormat='Сторінка {0}'}"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Bottom"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Background="{DynamicResource ReaderPageBgBrush}"
+                                                   Padding="5,2"
+                                                   FontSize="10" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    </Grid>
+                </Grid>
+
+                <!-- Secondary Split-View Panel -->
+                <Border Grid.Column="1"
+                        Width="520"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="2,0,0,0"
+                        Background="{DynamicResource ReaderViewportBgBrush}"
+                        Visibility="{Binding IsSplitViewEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="{DynamicResource BgSecondaryBrush}" Padding="10,6" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <TextBlock Text="Паралельний перегляд (Split-View):" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding OpenTabs}"
+                                          SelectedItem="{Binding SecondarySplitTab}"
+                                          DisplayMemberPath="TabTitle"
+                                          Width="240"
+                                          HorizontalAlignment="Right" />
+                            </Grid>
+                        </Border>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" DataContext="{Binding SecondarySplitTab}">
+                            <Grid Margin="14">
+                                <Image Source="{Binding CurrentPageImage}"
+                                       Visibility="{Binding IsPdfMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Stretch="Uniform" />
+                                <Border Background="{DynamicResource ReaderPageBgBrush}"
+                                        Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Padding="24" CornerRadius="6">
+                                    <TextBox Text="{Binding CurrentPageText, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             Foreground="{DynamicResource ReaderPageTextBrush}"
+                                             BorderThickness="0"
+                                             TextWrapping="Wrap"
+                                             FontSize="14.5" />
+                                </Border>
+                            </Grid>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Col 3: Interactive GridSplitter between Page Viewport and Notes Panel -->
+            <GridSplitter x:Name="NotesGridSplitter"
+                          Grid.Column="3"
+                          Width="5"
+                          HorizontalAlignment="Stretch"
+                          Background="{DynamicResource BorderSubtleBrush}"
+                          ShowsPreview="False"
+                          Visibility="{Binding IsAnnotationsVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <!-- Col 4: Right Annotations, Highlights & Obsidian Export Panel -->
+            <Border Grid.Column="4"
+                    Background="{DynamicResource BgSecondaryBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1,0,0,0"
+                    Padding="14"
+                    Visibility="{Binding IsAnnotationsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <TextBlock Text="🖍 Маркери, закладки та нотатки" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock Text="Виділіть цитату або додайте коментар до поточної сторінки:" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,8" TextWrapping="Wrap" />
+
+                        <TextBlock Text="Цитата / Виділений фрагмент:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                        <TextBox Style="{StaticResource ModernTextBoxStyle}" Text="{Binding NewQuoteInput, UpdateSourceTrigger=PropertyChanged}" Height="54" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8" />
+
+                        <TextBlock Text="Ваш коментар / нотатка:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                        <TextBox Style="{StaticResource ModernTextBoxStyle}" Text="{Binding NewCommentInput, UpdateSourceTrigger=PropertyChanged}" Height="46" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8" />
+
+                        <!-- Highlight Color Swatches -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Колір маркера:" FontSize="11.5" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <Button Width="22" Height="22" Background="#FACC15" BorderThickness="1" Margin="0,0,5,0" Command="{Binding SetHighlightColorCommand}" CommandParameter="#FACC15" />
+                            <Button Width="22" Height="22" Background="#34D399" BorderThickness="1" Margin="0,0,5,0" Command="{Binding SetHighlightColorCommand}" CommandParameter="#34D399" />
+                            <Button Width="22" Height="22" Background="#38BDF8" BorderThickness="1" Margin="0,0,5,0" Command="{Binding SetHighlightColorCommand}" CommandParameter="#38BDF8" />
+                            <Button Width="22" Height="22" Background="#F472B6" BorderThickness="1" Margin="0,0,5,0" Command="{Binding SetHighlightColorCommand}" CommandParameter="#F472B6" />
+                            <Button Width="22" Height="22" Background="#A78BFA" BorderThickness="1" Command="{Binding SetHighlightColorCommand}" CommandParameter="#A78BFA" />
+                        </StackPanel>
+
+                        <Button Style="{StaticResource AccentButtonStyle}" Content="➕ Зберегти витяг / нотатку" Command="{Binding AddHighlightOrNoteCommand}" Margin="0,0,0,6" />
+                        <Button Style="{StaticResource ModernButtonStyle}" Content="📤 Експорт у Markdown (Obsidian)" Command="{Binding ExportAnnotationsToObsidianMdCommand}" />
+                    </StackPanel>
+
+                    <ListBox ItemsSource="{Binding ActiveTab.Annotations}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             SelectionChanged="AnnotationsListBox_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:AnnotationRecord}">
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{Binding HighlightColor}"
+                                        BorderThickness="4,1,1,1"
+                                        CornerRadius="6"
+                                        Padding="10,8"
+                                        Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <Grid>
+                                            <TextBlock Text="{Binding PageNumber, StringFormat='Сторінка {0}'}" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                            <Button Content="✕" HorizontalAlignment="Right" Padding="4,0" FontSize="10"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding DataContext.DeleteAnnotationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding QuoteText}" FontSize="12" FontStyle="Italic" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding CommentText}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Row 3: Bottom Fast Page Slider & Status Bar -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ActiveTab.LoadTimeText}"
+                           FontSize="12"
+                           Foreground="{DynamicResource AccentBrush}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,16,0" />
+
+                <!-- Fast Scrubber Slider with Live Page Number Preview -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="Швидке гортання:" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Slider x:Name="PageSlider"
+                            Width="340"
+                            Minimum="1"
+                            Maximum="{Binding ActiveTab.TotalPages}"
+                            Value="{Binding ActiveTab.CurrentPage, Mode=OneWay}"
+                            IsSnapToTickEnabled="True"
+                            TickFrequency="1"
+                            VerticalAlignment="Center"
+                            PreviewMouseLeftButtonUp="PageSlider_PreviewMouseLeftButtonUp"
+                            ValueChanged="PageSlider_ValueChanged" />
+                    <Border Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="8,2" Margin="10,0,0,0">
+                        <TextBlock x:Name="SliderPreviewText"
+                                   Text="{Binding ActiveTab.CurrentPage, StringFormat='Стор. {0}'}"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ActiveTab.MemoryStatusText}"
+                               FontSize="11.5"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="0,0,14,0"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ActiveTab.ReadingProgressPercent, StringFormat='{}{0:0.0}%'}"
+                               FontSize="12"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

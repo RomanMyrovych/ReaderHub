@@ -1,0 +1,64 @@
+BOOKHUB — THIRD-PARTY COMPONENT INVENTORY
+
+This project references the following NuGet packages. Licenses below are
+reported from the package metadata or, where noted, the license file shipped
+in the package. The applicable full license text and any notices must be
+retained when redistributing the corresponding component or a binary that
+contains it. This inventory is not legal advice.
+
+Direct dependencies
+-------------------
+
+CommunityToolkit.Mvvm 8.4.2 — MIT
+https://licenses.nuget.org/MIT
+
+Dapper 2.1.89 — Apache-2.0
+https://licenses.nuget.org/Apache-2.0
+
+Microsoft.Data.Sqlite 10.0.13 — MIT
+https://licenses.nuget.org/MIT
+
+PDFtoImage 5.4.0 — MIT
+https://licenses.nuget.org/MIT
+
+System.Drawing.Common 10.0.13 — MIT
+https://licenses.nuget.org/MIT
+
+VersOne.Epub 3.3.6 — Unlicense
+https://licenses.nuget.org/Unlicense
+
+VirtualizingWrapPanel 2.5.4 — MIT
+https://licenses.nuget.org/MIT
+
+Native and transitive components used by the Windows x64 portable build
+-----------------------------------------------------------------------
+
+bblanchon.PDFium.Win32 152.0.7961 — Apache-2.0 per NuGet package metadata.
+The bundled PDFium engine has its own upstream BSD-style and Apache-2.0
+licensing and third-party notices:
+https://pdfium.googlesource.com/pdfium/+/refs/heads/main/LICENSE
+https://github.com/bblanchon/pdfium-binaries
+
+SkiaSharp 4.150.1 and SkiaSharp.NativeAssets.Win32 4.150.1 — MIT.
+The native assets also include third-party components with separate notices;
+retain the THIRD-PARTY-NOTICES.txt distributed with the SkiaSharp package.
+https://licenses.nuget.org/MIT
+
+SQLitePCLRaw 2.1.13 (bundle_e_sqlite3, core, lib.e_sqlite3,
+provider.e_sqlite3) — Apache-2.0 per NuGet package metadata.
+The SQLite database engine itself is public domain.
+https://licenses.nuget.org/Apache-2.0
+https://www.sqlite.org/copyright.html
+
+Microsoft.Win32.SystemEvents 10.0.13 — MIT
+https://licenses.nuget.org/MIT
+
+System.Memory 4.5.3 — MIT, according to the license file included in its
+NuGet package.
+https://github.com/dotnet/corefx/blob/master/LICENSE.TXT
+
+The portable publishing script is framework-dependent; it does not bundle the
+.NET runtime. .NET runtime licensing and notices therefore apply to the
+runtime installed separately by the end user. A self-contained installer or
+other binary redistribution must include the applicable .NET runtime license
+and third-party notices in addition to the component notices above.

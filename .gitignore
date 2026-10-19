@@ -1,0 +1,19 @@
+# Build and IDE output
+**/bin/
+**/obj/
+.vs/
+.idea/
+
+# Local tool, package, and publish output
+.dotnet_home/
+.temp/
+packages/
+Publish/
+cache/
+
+# Local user data and backups
+Backups/
+SampleLibrary/
+bookhub.db*
+bookhub.template.db
+settings.json

@@ -1,0 +1,708 @@
+<Window x:Class="BookHub.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:wpftk="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
+        xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
+        mc:Ignorable="d"
+        Title="BookHub — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
+        Width="1480" Height="900"
+        WindowStartupLocation="Manual"
+        Background="{DynamicResource BgPrimaryBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Top Search, Theme Selector & Action Toolbar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Top Row: Brand | Isolated Search Box Block | Standalone Theme Selector Block | Primary Scan & Settings -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Col 0: Brand -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                        <Border Background="{DynamicResource AccentBrush}" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
+                            <TextBlock Text="📚" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="BookHub Pro" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="{DynamicResource Loc_AppSubtitle}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Col 1: Isolated Search Panel -->
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource InputBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10,6"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            ClipToBounds="True">
+                        <Grid ClipToBounds="True">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="🔍"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="2,0,8,0"
+                                       IsHitTestVisible="False" />
+
+                            <Grid Grid.Column="1" ClipToBounds="True">
+                                <TextBox x:Name="SearchBox"
+                                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
+                                         CaretBrush="{DynamicResource AccentBrush}"
+                                         BorderThickness="0"
+                                         Padding="0"
+                                         Margin="0,0,12,0"
+                                         FontSize="13"
+                                         VerticalAlignment="Center"
+                                         VerticalContentAlignment="Center" />
+
+                                <TextBlock Text="{DynamicResource Loc_SearchPlaceholder}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12.5"
+                                           VerticalAlignment="Center"
+                                           Margin="2,0,16,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <!-- Col 2: Standalone Theme Selector Block (Right of Search, MinWidth="150", own border & 🎨 label) -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BgCardBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10,4"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource Loc_ThemeLabel}"
+                                       FontSize="12.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding ThemeNames}"
+                                      SelectedItem="{Binding SelectedThemeName}"
+                                      MinWidth="150"
+                                      Padding="8,4"
+                                      VerticalAlignment="Center"
+                                      ToolTip="Динамічна колірна схема (10 пресетів)" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Col 3: Primary Scan & Settings Buttons -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ModernButtonStyle}"
+                                Content="{DynamicResource Loc_Scan}"
+                                Command="{Binding RunFullScanCommand}"
+                                Padding="12,6"
+                                Margin="0,0,8,0" />
+
+                        <Button Style="{StaticResource AccentButtonStyle}"
+                                Content="{DynamicResource Loc_FoldersSettings}"
+                                Padding="14,6"
+                                Command="{Binding OpenSettingsCommand}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Sub-Row: Search Options (FTS5, Sort, View Mode) & Catalog Tools -->
+                <Border Grid.Row="1"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="0,1,0,0"
+                        Margin="0,8,0,0"
+                        Padding="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: FTS5 Toggle, Sort Order, Grid/Table Switch -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <CheckBox Content="{DynamicResource Loc_FtsContent}"
+                                      IsChecked="{Binding UseFullTextFtsSearch}"
+                                      ToolTip="Повнотекстовий пошук по вмісту книг за допомогою SQLite FTS5 (AND, OR, NOT, *)"
+                                      Foreground="{DynamicResource TextPrimaryBrush}"
+                                      FontWeight="Medium"
+                                      VerticalAlignment="Center"
+                                      Margin="4,0,16,0" />
+
+                            <TextBlock Text="{DynamicResource Loc_SortLabel}"
+                                       FontSize="12.5"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding SortOptions}"
+                                      SelectedItem="{Binding SelectedSortOrder}"
+                                      MinWidth="115"
+                                      Padding="8,4"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,12,0" />
+
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_GridTableToggle}"
+                                    Command="{Binding ToggleViewModeCommand}"
+                                    ToolTip="Перемкнути режим відображення: віртуалізована сітка або таблиця"
+                                    Padding="12,5" />
+                        </StackPanel>
+
+                        <!-- Right: Batch Edit, Duplicates, One-Click Backup, About -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_BatchEdit}"
+                                    Click="BatchEditButton_Click"
+                                    ToolTip="Пакетне редагування виділених книг (Ctrl/Shift)"
+                                    Padding="11,5"
+                                    Margin="0,0,6,0" />
+
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_Duplicates}"
+                                    Command="{Binding OpenDuplicatesDialogCommand}"
+                                    ToolTip="Пошук та злиття дублікатів за SHA-256 та розміром"
+                                    Padding="11,5"
+                                    Margin="0,0,6,0" />
+
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_BackupZip}"
+                                    Command="{Binding CreateOneClickBackupCommand}"
+                                    ToolTip="Локальне резервне копіювання бази SQLite, налаштувань та нотаток в 1 клік"
+                                    Padding="11,5"
+                                    Margin="0,0,6,0" />
+
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_About}"
+                                    Command="{Binding OpenAboutWindowCommand}"
+                                    ToolTip="Про програму, ліцензія MIT та стороннє ПЗ"
+                                    Padding="11,5" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Row 1: Main Workspace with Persistent GridSplitters -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftSidebarColumn" Width="280" MinWidth="210" MaxWidth="460" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" MinWidth="400" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition x:Name="RightInspectorColumn" Width="330" MinWidth="240" MaxWidth="520" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Col 0: Left Filter Sidebar (Wrapped in ScrollViewer with HorizontalScrollBarVisibility="Disabled") -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource BgSecondaryBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="14">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock Text="{DynamicResource Loc_FileFormats}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            <Button Content="{DynamicResource Loc_ResetAll}"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource ModernButtonStyle}"
+                                    Padding="8,2"
+                                    FontSize="11"
+                                    Command="{Binding ClearFiltersCommand}" />
+                        </Grid>
+
+                        <UniformGrid Columns="2" Margin="0,0,0,6">
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="Усі (All)" Margin="0,0,3,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="ALL" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="📕 PDF" Margin="3,0,0,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="PDF" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="📗 EPUB" Margin="0,0,3,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="EPUB" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="📘 FB2" Margin="3,0,0,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="FB2" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="📙 MOBI/AZW" Margin="0,0,3,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="MOBI" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="🎨 CBZ/DJVU" Margin="3,0,0,5" Command="{Binding SetFormatFilterCommand}" CommandParameter="CBZ" />
+                        </UniformGrid>
+                        <Button Style="{StaticResource ModernButtonStyle}" Content="📄 Документи (DOCX / MD / TXT / ODT)" Margin="0,0,0,14" Command="{Binding SetFormatFilterCommand}" CommandParameter="DOCX" />
+
+                        <!-- Reading Status -->
+                        <TextBlock Text="{DynamicResource Loc_ReadingStatus}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <UniformGrid Columns="2" Margin="0,0,0,14">
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="{DynamicResource Loc_StatusAll}" Margin="0,0,3,5" Command="{Binding SetStatusFilterCommand}" CommandParameter="ALL" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="{DynamicResource Loc_StatusReading}" Margin="3,0,0,5" Command="{Binding SetStatusFilterCommand}" CommandParameter="Reading" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="{DynamicResource Loc_StatusPlan}" Margin="0,0,3,5" Command="{Binding SetStatusFilterCommand}" CommandParameter="Plan" />
+                            <Button Style="{StaticResource ModernButtonStyle}" Content="{DynamicResource Loc_StatusCompleted}" Margin="3,0,0,5" Command="{Binding SetStatusFilterCommand}" CommandParameter="Completed" />
+                        </UniformGrid>
+
+                        <!-- Smart Collections -->
+                        <TextBlock Text="{DynamicResource Loc_SmartCollections}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <ListBox x:Name="SmartCollectionsListBox"
+                                 ItemsSource="{Binding SmartCollections}"
+                                 SelectedItem="{Binding SelectedSmartCollection, Mode=TwoWay}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Margin="0,0,0,14"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 PreviewMouseLeftButtonDown="SmartCollectionsListBox_PreviewMouseLeftButtonDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:SmartCollectionRecord}">
+                                    <TextBlock Text="{Binding Name, StringFormat='⚡ {0}'}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Padding="2,3" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Virtual Shelves -->
+                        <TextBlock Text="{DynamicResource Loc_VirtualShelves}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <ListBox x:Name="ShelvesListBox"
+                                 ItemsSource="{Binding VirtualShelves}"
+                                 SelectedItem="{Binding SelectedShelf, Mode=TwoWay}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Margin="0,0,0,6"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 PreviewMouseLeftButtonDown="ShelvesListBox_PreviewMouseLeftButtonDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:VirtualShelfRecord}">
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Name, StringFormat='📁 {0}'}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding BookCount, StringFormat='({0})'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,0,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Id}" Value="0">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource ModernTextBoxStyle}" Text="{Binding NewShelfNameInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Назва нової полиці" />
+                            <Button Grid.Column="1" Style="{StaticResource ModernButtonStyle}" Content="＋" Command="{Binding CreateShelfCommand}" Margin="6,0,0,0" Padding="10,4" />
+                        </Grid>
+
+                        <!-- Category / Author / Tag ComboBoxes (Stretched cleanly without horizontal scrollbar clipping) -->
+                        <TextBlock Text="{DynamicResource Loc_CategoryFolder}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding Categories}"
+                                  SelectedItem="{Binding SelectedCategory}"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0,0,0,12"
+                                  Padding="6,5" />
+
+                        <TextBlock Text="{DynamicResource Loc_Author}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding Authors}"
+                                  SelectedItem="{Binding SelectedAuthor}"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0,0,0,12"
+                                  Padding="6,5" />
+
+                        <TextBlock Text="{DynamicResource Loc_TagsGenres}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding AvailableTags}"
+                                  SelectedItem="{Binding SelectedTag}"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0,0,0,12"
+                                  Padding="6,5" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Splitter 1 -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
+
+            <!-- Col 2: Center Library View (Virtualized Cover Grid OR DataGrid Table) -->
+            <Grid Grid.Column="2" Background="{DynamicResource BgPrimaryBrush}">
+                <!-- Mode A: Virtualized Cover Grid -->
+                <ListBox x:Name="BooksListBox"
+                         ItemsSource="{Binding FilteredBooks}"
+                         SelectedItem="{Binding SelectedBook}"
+                         SelectionMode="Extended"
+                         Visibility="{Binding IsGridViewMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="14"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.CanContentScroll="True"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         VirtualizingPanel.ScrollUnit="Pixel"
+                         VirtualizingPanel.CacheLengthUnit="Page"
+                         VirtualizingPanel.CacheLength="2,2"
+                         MouseDoubleClick="BooksListBox_MouseDoubleClick">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <wpftk:VirtualizingWrapPanel Orientation="Horizontal"
+                                                         SpacingMode="Uniform"
+                                                         StretchItems="False" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="7" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="CardBorder"
+                                                Width="196"
+                                                Height="336"
+                                                Background="{DynamicResource BgCardBrush}"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                BorderThickness="1.5"
+                                                CornerRadius="10"
+                                                Padding="10"
+                                                Cursor="Hand">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="214" />
+                                                    <RowDefinition Height="*" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <Border Grid.Row="0" CornerRadius="6" ClipToBounds="True" Background="#101218">
+                                                    <Grid>
+                                                        <Image Source="{Binding CoverPath, Converter={StaticResource CoverPathToBitmapConverter}}"
+                                                               Stretch="UniformToFill"
+                                                               RenderOptions.BitmapScalingMode="LowQuality" />
+
+                                                        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#CC0F1117" BorderBrush="#4B5574" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="6">
+                                                            <TextBlock Text="{Binding FormatBadge}" FontSize="10" FontWeight="Bold" Foreground="#60A5FA" />
+                                                        </Border>
+
+                                                        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="#CC0F1117" CornerRadius="4" Padding="6,2" Margin="6">
+                                                            <TextBlock Text="{Binding PageCount, StringFormat='{}{0} стор.'}" FontSize="10" Foreground="#E5E7EB" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+
+                                                <StackPanel Grid.Row="1" Margin="2,8,2,4">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="12.5"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               TextWrapping="Wrap"
+                                                               MaxHeight="36"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Title}" />
+                                                    <TextBlock Text="{Binding Author}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Margin="0,3,0,0" />
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Row="2">
+                                                    <Grid Margin="2,0,2,4">
+                                                        <TextBlock Text="{Binding StatusDisplay}" FontSize="10.5" Foreground="{DynamicResource AccentBrush}" />
+                                                        <TextBlock Text="{Binding ReadingProgress, StringFormat='{}{0:0}%'}"
+                                                                   FontSize="10.5"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                   HorizontalAlignment="Right" />
+                                                    </Grid>
+                                                    <ProgressBar Height="4" Minimum="0" Maximum="100" Value="{Binding ReadingProgress, Mode=OneWay}" Background="#12151E" Foreground="{DynamicResource AccentBrush}" BorderThickness="0" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                <Setter TargetName="CardBorder" Property="BorderThickness" Value="2" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+
+                <!-- Mode B: High-Speed Virtualized Table View -->
+                <DataGrid x:Name="BooksDataGrid"
+                          ItemsSource="{Binding FilteredBooks}"
+                          SelectedItem="{Binding SelectedBook}"
+                          SelectionMode="Extended"
+                          Visibility="{Binding IsTableViewMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          Background="{DynamicResource BgPrimaryBrush}"
+                          RowBackground="{DynamicResource BgCardBrush}"
+                          AlternatingRowBackground="{DynamicResource BgSecondaryBrush}"
+                          Foreground="{DynamicResource TextPrimaryBrush}"
+                          BorderThickness="0"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}"
+                          EnableRowVirtualization="True"
+                          MouseDoubleClick="BooksListBox_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Формат" Binding="{Binding FormatBadge}" Width="75" />
+                        <DataGridTextColumn Header="Назва книги" Binding="{Binding Title}" Width="2*" />
+                        <DataGridTextColumn Header="Автор" Binding="{Binding Author}" Width="1.3*" />
+                        <DataGridTextColumn Header="Серія" Binding="{Binding SeriesDisplay}" Width="130" />
+                        <DataGridTextColumn Header="Рік" Binding="{Binding PublishYear}" Width="65" />
+                        <DataGridTextColumn Header="Стор." Binding="{Binding PageCount}" Width="70" />
+                        <DataGridTextColumn Header="Прогрес %" Binding="{Binding ReadingProgress, StringFormat='{}{0:0.0}%'}" Width="85" />
+                        <DataGridTextColumn Header="Кодування" Binding="{Binding DetectedEncoding}" Width="105" />
+                        <DataGridTextColumn Header="Розмір" Binding="{Binding FormattedSize}" Width="85" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- Splitter 2 -->
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
+
+            <!-- Col 4: Right Inspector Panel (Details, Metadata Editor, Shelves, Related Items) -->
+            <Border Grid.Column="4"
+                    Background="{DynamicResource BgSecondaryBrush}"
+                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                    BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16">
+                    <StackPanel DataContext="{Binding SelectedBook}">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <Border Height="220" CornerRadius="8" ClipToBounds="True" Background="#12151E" Margin="0,0,0,12">
+                            <Image Source="{Binding CoverPath, Converter={StaticResource CoverPathToBitmapConverter}}" Stretch="Uniform" />
+                        </Border>
+
+                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Author}" FontSize="12.5" Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,10" TextWrapping="Wrap" />
+
+                        <Button Style="{StaticResource AccentButtonStyle}"
+                                Content="{DynamicResource Loc_ReadInFastReader}"
+                                Command="{Binding DataContext.OpenBookCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}"
+                                Padding="12,8"
+                                Margin="0,0,0,6" />
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_MetadataEncoding}"
+                                    Command="{Binding DataContext.OpenMetadataEditorForSelectedCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <Button Grid.Column="2" Style="{StaticResource ModernButtonStyle}"
+                                    Content="{DynamicResource Loc_SystemReader}"
+                                    Command="{Binding DataContext.OpenBookExternalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}" />
+                        </Grid>
+
+                        <!-- Quick Status Change -->
+                        <TextBlock Text="{DynamicResource Loc_ReadingStatus}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,5" />
+                        <UniformGrid Columns="3" Margin="0,0,0,12">
+                            <Button Content="Читаю" FontSize="11" Padding="4,4" Margin="0,0,3,0"
+                                     Command="{Binding DataContext.ChangeBookStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Reading">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ReadingStatus.Reading}">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Content="План" FontSize="11" Padding="4,4" Margin="3,0,3,0"
+                                     Command="{Binding DataContext.ChangeBookStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Plan">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ReadingStatus.Plan}">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Content="Прочитано" FontSize="11" Padding="4,4" Margin="3,0,0,0"
+                                     Command="{Binding DataContext.ChangeBookStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Completed">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:ReadingStatus.Completed}">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </UniformGrid>
+
+                        <!-- Assign to Virtual Shelf -->
+                        <TextBlock Text="{DynamicResource Loc_AddToShelf}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <Grid Margin="0,0,0,12">
+                            <ComboBox x:Name="AssignShelfCombo"
+                                      ItemsSource="{Binding DataContext.AssignableShelves, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      SelectedItem="{Binding DataContext.SelectedBookShelf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                      DisplayMemberPath="Name" />
+                            <TextBlock Text="Оберіть поличку..."
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="10,0,0,0"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedItem, ElementName=AssignShelfCombo}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+                        <!-- Extended Info Card -->
+                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3">
+                                    <Run Text="Формат: " /><Run Text="{Binding FormatBadge, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <Run Text=" • Кодування: " /><Run Text="{Binding DetectedEncoding, Mode=OneWay}" Foreground="{DynamicResource AccentBrush}" />
+                                </TextBlock>
+                                <TextBlock FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3">
+                                    <Run Text="Сторінок: " /><Run Text="{Binding PageCount, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                    <Run Text=" • Розмір: " /><Run Text="{Binding FormattedSize, Mode=OneWay}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </TextBlock>
+                                <TextBlock FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3">
+                                    <Run Text="ISBN: " /><Run Text="{Binding Isbn, TargetNullValue='—'}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <Run Text=" • Рік: " /><Run Text="{Binding PublishYear, TargetNullValue='—'}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </TextBlock>
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0" Text="{Binding FilePath}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Related Items (Конспект / Код / Шпаргалка) -->
+                        <TextBlock Text="{DynamicResource Loc_RelatedItems}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <ItemsControl ItemsSource="{Binding DataContext.SelectedBookRelatedItems, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:RelatedItemRecord}">
+                                    <Border Background="{DynamicResource BgCardBrush}" CornerRadius="5" Padding="8,5" Margin="0,0,0,5">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding RelationType}" FontSize="10.5" Foreground="{DynamicResource AccentBrush}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="↗" Padding="6,2" Margin="4,0" Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding DataContext.OpenRelatedItemCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                            <Button Grid.Column="2" Content="✕" Padding="5,2" Style="{StaticResource ModernButtonStyle}"
+                                                    Command="{Binding DataContext.DeleteRelatedItemCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="6" Padding="8" Margin="0,0,0,12">
+                            <StackPanel DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <TextBlock Text="Прив'язати конспект, репозиторій або шпаргалку:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                <ComboBox ItemsSource="{Binding RelationTypes}" SelectedItem="{Binding NewRelatedTypeInput}" Margin="0,0,0,5" />
+                                <TextBox Style="{StaticResource ModernTextBoxStyle}" Text="{Binding NewRelatedTitleInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Назва зв'язку" Margin="0,0,0,5" />
+                                <TextBox Style="{StaticResource ModernTextBoxStyle}" Text="{Binding NewRelatedTargetInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="Шлях до файлу .md/.cs або текст нотатки" Margin="0,0,0,6" />
+                                <Button Style="{StaticResource ModernButtonStyle}" Content="{DynamicResource Loc_AddRelation}" Command="{Binding AddRelatedItemToBookCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{DynamicResource Loc_DescriptionPreview}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Description}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Row 2: Bottom Status Bar -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="18,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{DynamicResource Loc_FooterLocalBadge}" FontSize="12" Foreground="#10B981" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
