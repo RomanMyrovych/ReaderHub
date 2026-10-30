@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
-    BookHub Pro v3.5 Portable Publisher (SingleFolder on E:\ or D:\, zero C:\ drive usage)
+    BookHub Pro Suite v3.5 Portable Publisher (SingleFolder on E:\ or D:\, zero C:\ drive usage)
+    Includes both BookHub.App.exe and standalone AllReaderBook.exe (ReadyToRun).
 #>
 
 param(
@@ -23,11 +24,21 @@ $env:TMP = "$PSScriptRoot\.temp"
 New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME, $env:NUGET_PACKAGES, $env:TEMP, $OutputDir | Out-Null
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Building BookHub Pro v3.5 Portable ($Runtime)" -ForegroundColor Cyan
+Write-Host " Building BookHub Pro Suite v3.5 + AllReaderBook v0.9.0-beta ($Runtime)" -ForegroundColor Cyan
 Write-Host " Output Directory: $OutputDir" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 2. Publish WPF application (--self-contained false -p:PublishSingleFile=false)
+# 2. Publish AllReaderBook (ReadyToRun) and BookHub.App into the shared directory
+dotnet publish "$PSScriptRoot\BookHub.Reader\BookHub.Reader.csproj" `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained false `
+    -p:PublishReadyToRun=true `
+    -p:PublishSingleFile=false `
+    -p:DebugType=None `
+    -p:DebugSymbols=false `
+    -o $OutputDir
+
 dotnet publish "$PSScriptRoot\BookHub.App\BookHub.App.csproj" `
     -c $Configuration `
     -r $Runtime `
@@ -47,19 +58,16 @@ if ($null -ne $pdfiumCandidate) {
     Write-Host "[OK] Copied native PDFium engine: $($pdfiumCandidate.FullName)" -ForegroundColor Green
 }
 
-# 4. Copy MIT LICENSE and THIRD_PARTY_LICENSES.txt
-foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt")) {
+# 4. Copy MIT LICENSE, THIRD_PARTY_LICENSES.txt, README.md, and PRIVACY.md
+foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt", "README.md", "PRIVACY.md")) {
     $srcDoc = Join-Path $PSScriptRoot $docFile
     if (Test-Path $srcDoc) {
         Copy-Item -Path $srcDoc -Destination (Join-Path $OutputDir $docFile) -Force
-        Write-Host "[OK] Included legal notice file: $docFile" -ForegroundColor Green
+        Write-Host "[OK] Included documentation/legal file: $docFile" -ForegroundColor Green
     }
 }
 
-# 5. Create local cache & Backups folders. bookhub.db and settings.json are NOT copied from the
-#    dev tree on purpose: the app now provisions them next to the executable on first launch
-#    (schema is created via CREATE TABLE IF NOT EXISTS), so the portable folder stays clean and
-#    is fully self-contained even when started from a Desktop shortcut.
+# 5. Create local cache & Backups folders.
 New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir "cache"), (Join-Path $OutputDir "Backups") | Out-Null
 
 # Optional: seed a pre-built empty database template if one is provided in the repo root.

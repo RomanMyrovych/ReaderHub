@@ -1,39 +1,101 @@
-# BookHub
+# 📖 AllReaderBook v0.9.02 (Public Beta)
 
-BookHub is a Windows desktop book catalog and reader built with WPF and .NET 9.
-It uses PDFium for PDF rendering and supports several document formats.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform: Windows x64](https://img.shields.io/badge/Platform-Windows%20x64-0078D6.svg)](#системні-вимоги)
+[![Runtime: .NET 9](https://img.shields.io/badge/.NET-9.0%20WPF-512BD4.svg)](#збірка-з-вихідного-коду)
+[![Status: Public Beta](https://img.shields.io/badge/Release-v0.9.02--beta-orange.svg)](#що-нового-у-v0902-beta)
 
-## Requirements
+**AllReaderBook v0.9.02 (Public Beta)** — це автономний, надшвидкий і легкий читач електронних книг та документів для Windows (`win-x64`), спроєктований із максимальним фокусом на швидкодію, миттєвий запуск і мінімальне споживання оперативної пам'яті навіть на слабких ПК та ноутбуках без дискретної відеокарти.
 
-- Windows x64
-- .NET 9 SDK to build
-- .NET 9 Desktop Runtime to run a framework-dependent portable build
+Проєкт може використовуватися як повністю незалежний рідер (`AllReaderBook.exe`) або працювати у зв'язці з настільним каталогізатором **BookHub Pro**.
 
-## Build
+---
+
+## 🆕 Що нового у v0.9.02-beta
+
+- **🌓 Розумний Нічний та Сепія режим для PDF (*Smart Dark & Sepia Mode*):**
+  - Адаптивна хрома-чутлива перекольоровка (`< 0.8 мс` на сторінку через LUT-таблицю) перефарбовує сліпучо-білий фон PDF-сторінок і темний текст під активну тему (*Obsidian Dark*, *Nord Dark*, *OLED Black*, *Warm Sepia*, *Nord Light*).
+  - **Збереження кольорових ілюстрацій та фотографій:** пікселі з високою насиченістю кольору не інвертуються у «рентгенівський негатив», зберігаючи природний вигляд графіків та зображень.
+  - Швидке перемикання кнопкою **`🌓 PDF-тема`** безпосередньо на верхньому тулбарі або у вікні налаштувань (`F2`).
+- **📌 Автоматичне відновлення сесії та Закріплені вкладки (*Session Restore & Pinned Tabs*):**
+  - Автоматичне збереження відкритих і закріплених вкладок між сеансами з точним відновленням номера сторінки, вертикального зміщення скролу (`ScrollOffset` / `PageRelativeOffset`), масштабу та режиму перегляду.
+  - **Миттєвий старт із 0 МБ RAM для фонових вкладок:** при запуску рендериться лише активна вкладка, а всі інші вкладки сесії відновлюються ліниво (*Lazy Restore*) у момент переходу на них.
+  - Закріплення важливих книг та довідників (`📌 Закріпити вкладку` у контекстному меню вкладки) із захистом від випадкового масового закриття.
+- **📂 Випадаюча кнопка «Відкрити ▼» (SplitButton) зі списком останніх книг:**
+  - Доступ до історії 10 останніх документів прямо з тулбара без повернення на стартовий екран, із автоматичною перевіркою наявності файлу на диску та швидким очищенням історії.
+- **🌍 10 мов інтерфейсу та оновлені вікна «Налаштування» (`F2`) і «Про програму» (`F1`):**
+  - Миттєве перемикання мови інтерфейсу в реальному часі без перезапуску програми: *Українська (UA), English (US), Polski (PL), Deutsch (DE), Español (ES), Français (FR), Italiano (IT), Português (PT), 日本語 (JA), 中文 (ZH)*.
+  - Вбудований перегляд ліцензії MIT, переліку сторонніх компонентів (`THIRD_PARTY_LICENSES.txt`) і політики конфіденційності (`PRIVACY.md`), а також обов'язкове ознайомлення з умовами ліцензії при першому запуску.
+
+---
+
+## ⚡ Ключові переваги та архітектура продуктивності
+
+- **Миттєвий старт (ReadyToRun AOT):** Попередня компіляція критичного коду та нативного рушія **Google PDFium** забезпечує відкриття важких технічних PDF-книг (600–1500+ сторінок) за десятки мілісекунд.
+- **Фіксований кільцевий пул пам'яті (`PdfSurfacePool`):** Одночасно у відеопам'яті/RAM утримується не більше 6 активних растрових поверхонь. Фонові вкладки автоматично вивантажують растри з оперативної пам'яті, зберігаючи точну сторінку та піксельне зміщення скролу.
+- **Дворівневий прогресивний рендеринг (60 FPS):** Під час швидкого прокручування сторінки миттєво відмальовуються у легкому прев'ю-режимі, а після зупинки скролу автоматично доводяться до кристально чіткого High-Res.
+- **Багатовкладковий інтерфейс та Single-Instance IPC:** Відкриття книг із Провідника Windows («Відкрити за допомогою...») або перетягуванням (Drag-and-Drop) миттєво додає вкладку у вже запущене вікно через іменований канал `AllReaderBook_Ipc_Pipe`.
+- **Інструменти дослідника та інтеграція з Obsidian:** Посимвольне виділення тексту (One-Shot Text Selection), пошук по документу з підсвічуванням збігів (`Ctrl+F`), кольорові маркери, нотатки та експорт конспектів у формат Markdown (`.md`) для **Obsidian**.
+- **5 адаптивних колірних тем (3 темні та 2 світлі):** *Obsidian Dark*, *Nord Dark*, *OLED Black*, *Warm Sepia* та *Nord Light*.
+
+---
+
+## 📚 Підтримувані формати документів і книг
+
+**AllReaderBook** підтримує суворий білий список форматів із попередньою верифікацією сигнатури заголовка (Magic Bytes):
+
+| Категорія | Підтримувані розширення | Особливості підтримки |
+| :--- | :--- | :--- |
+| **PDF-документи** | `.pdf` | Векторні цифрові книги (з виділенням тексту, пошуком та адаптивною PDF-темою) і растрові скановані PDF |
+| **Електронні книги** | `.epub`, `.fb2`, `.mobi`, `.azw`, `.azw3` | Потокова пагінація, автоматичне витягнення ієрархічного змісту (TOC) та автовизначення кодувань (UTF-8, Windows-1251, KOI8-R/U) |
+| **Офісні та текстові документи** | `.docx`, `.txt`, `.md`, `.rtf` | Повноцінне читання структурованих документів, Markdown-нотаток і технічної документації |
+| **Комікси та архіви сканів** | `.cbz`, `.djvu` | Підтримка архівів ілюстрацій та спеціалізованих технічних сканів |
+
+---
+
+## 🧪 Статус Public Beta та зворотний зв'язок
+
+Поточний випуск **v0.9.02-beta** має статус **публічної бета-версії (Public Beta)**. Основне ядро рендерингу, вкладкова навігація, відновлення сесій, адаптивна PDF-тема, пошук та робота з нотатками повністю функціональні та готові до щоденного використання.
+
+Ми активно запрошуємо бета-тестувальників та читачів долучитися до вдосконалення **AllReaderBook**:
+- Якщо ви виявили помилку, неточність рендерингу специфічного PDF/EPUB/FB2-файлу, артефакти масштабування або маєте пропозиції щодо ергономіки інтерфейсу — будь ласка, створіть звернення у вкладці [**Issues**](https://github.com/RomanMyrovych/AllReaderBook/issues).
+- При описі дефекту бажано вказати формат документа, приблизний розмір файлу, вибраний режим перегляду (*Безперервний*, *1 Стор.*, *Розворот*) та кроки для відтворення.
+
+---
+
+## 🔒 Конфіденційність та повна офлайновість
+
+**AllReaderBook** є 100% офлайновою програмою:
+- Жодних мережевих запитів, телеметрії, аналітичних SDK або прихованих трекерів.
+- Усі налаштування, відкрита сесія вкладок, історія останніх відкритих книг та нотатки зберігаються локально у файлі `allreaderbook_settings.json`.
+- Детальніше див. у файлі [PRIVACY.md](PRIVACY.md).
+
+---
+
+## 💻 Системні вимоги
+
+- **ОС:** Windows 10 / Windows 11 (x64)
+- **ОЗП:** від 2 ГБ RAM (споживання рідера у робочому режимі становить ~45–95 МБ)
+- **Середовище виконання:** .NET 9.0 Desktop Runtime (для компактної Portable-версії) або не потребує нічого (при встановленні через автономний інсталятор Setup).
+
+---
+
+## 🛠 Збірка з вихідного коду та пакування
 
 ```powershell
-dotnet restore .\BookHub.sln
+# 1. Компіляція рішення у конфігурації Release
 dotnet build .\BookHub.sln -c Release
+
+# 2. Створення автономної Portable-збірки AllReaderBook (Publish\AllReaderBook_Portable_v0.9.02-beta)
+powershell -ExecutionPolicy Bypass -File .\Publish-Reader-Portable.ps1
+
+# 3. Створення інсталятора AllReaderBook (Inno Setup 6 -> installer_allreaderbook.iss)
+powershell -ExecutionPolicy Bypass -File .\Build-Installer.ps1 -ReaderOnly
 ```
 
-To create the portable x64 folder:
+---
 
-```powershell
-.\Publish-Portable.ps1 -Runtime win-x64 -Configuration Release
-```
+## 📜 Ліцензія
 
-The portable build is framework-dependent and requires the .NET 9 Desktop
-Runtime. The publishing script excludes the local sample library by default.
-Only use `-IncludeSampleLibrary` when you have verified redistribution rights
-for every included item.
-
-## License
-
-The BookHub source is licensed under the MIT License; see [LICENSE](LICENSE).
-Third-party dependencies and their declared licenses are listed in
-[THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt).
-
-Do not add books, documents, databases, settings, backups, or published build
-outputs to source control. The sample library and local user data are excluded
-by `.gitignore` and are not included in portable builds unless explicitly
-requested.
+Вихідний код **AllReaderBook** розповсюджується на умовах ліцензії **MIT License** — Copyright (c) 2026 **Roman Myrovych** (див. файл [LICENSE](LICENSE)).
+Повний перелік сторонніх компонентів (PDFium, VersOne.Epub, .NET Runtime & WPF, SQLite) та тексти їхніх ліцензій наведено у файлі [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt).

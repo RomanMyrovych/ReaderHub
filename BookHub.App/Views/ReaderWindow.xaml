@@ -105,6 +105,7 @@
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding TabTitle}"
                                                        ToolTip="{Binding Book.Title}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                                        FontWeight="SemiBold"
                                                        FontSize="12"
                                                        VerticalAlignment="Center"
@@ -236,7 +237,9 @@
                     <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
                                   Content="🖊 Виділення"
                                   IsChecked="{Binding IsTextSelectionMode}"
-                                  ToolTip="Режим виділення тексту"
+                                  IsEnabled="{Binding CanSelectText}"
+                                  ToolTip="{Binding TextSelectionToolTip}"
+                                  ToolTipService.ShowOnDisabled="True"
                                   Margin="4,0" />
                     <Button Style="{StaticResource ModernButtonStyle}"
                             Content="🔖 Закладка"
@@ -338,12 +341,19 @@
                 <!-- Primary Active Tab Viewport (Tracks SizeChanged to smoothly Fit-to-Width) -->
                 <Grid x:Name="PrimaryViewportHost"
                       Grid.Column="0"
+                      Background="Transparent"
+                      Focusable="True"
+                      FocusVisualStyle="{x:Null}"
                       DataContext="{Binding ActiveTab}"
+                      PreviewMouseLeftButtonDown="ReadingViewport_PreviewMouseLeftButtonDown"
+                      MouseLeftButtonDown="ReadingViewport_MouseLeftButtonDown"
                       SizeChanged="PrimaryViewportHost_SizeChanged">
 
                     <!-- PDF Single Page / Two-Page Spread -->
                     <Grid Visibility="{Binding IsPdfMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ScrollViewer x:Name="PdfScrollViewer"
+                                  Focusable="True"
+                                  FocusVisualStyle="{x:Null}"
                                   Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
                                   HorizontalScrollBarVisibility="{Binding HorizontalScrollVisibility}"
                                   VerticalScrollBarVisibility="Auto"
@@ -426,6 +436,8 @@
                         </Grid>
                     </ScrollViewer>
                     <ListBox x:Name="PdfContinuousListBox"
+                             Focusable="True"
+                             FocusVisualStyle="{x:Null}"
                              ItemsSource="{Binding ContinuousWindowPages}"
                              Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}}"
                              Background="Transparent"
@@ -451,6 +463,7 @@
                                 <Setter Property="Background" Value="Transparent" />
                                 <Setter Property="HorizontalContentAlignment" Value="Center" />
                                 <Setter Property="Focusable" Value="False" />
+                                <Setter Property="Height" Value="{Binding DataContext.ContinuousPageItemHeight, RelativeSource={RelativeSource AncestorType=ListBox}}" />
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
@@ -484,6 +497,8 @@
                     <!-- Text / EPUB / FB2 / DOCX / MD Viewport (Adaptive Fit-to-Width without clipping or horizontal scrollbar) -->
                     <Grid Visibility="{Binding IsTextMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ScrollViewer x:Name="TextScrollViewer"
+                                  Focusable="True"
+                                  FocusVisualStyle="{x:Null}"
                                   Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="{Binding HorizontalScrollVisibility}"
@@ -554,6 +569,8 @@
                         </Grid>
                     </ScrollViewer>
                     <ListBox x:Name="TextContinuousListBox"
+                             Focusable="True"
+                             FocusVisualStyle="{x:Null}"
                              ItemsSource="{Binding ContinuousWindowPages}"
                              Visibility="{Binding IsContinuousVerticalMode, Converter={StaticResource BoolToVisibilityConverter}}"
                              Background="Transparent"
@@ -579,6 +596,7 @@
                                 <Setter Property="Background" Value="Transparent" />
                                 <Setter Property="HorizontalContentAlignment" Value="Center" />
                                 <Setter Property="Focusable" Value="False" />
+                                <Setter Property="Height" Value="{Binding DataContext.ContinuousPageItemHeight, RelativeSource={RelativeSource AncestorType=ListBox}}" />
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
@@ -690,7 +708,7 @@
                             <Button Width="22" Height="22" Background="#A78BFA" BorderThickness="1" Command="{Binding SetHighlightColorCommand}" CommandParameter="#A78BFA" />
                         </StackPanel>
 
-                        <Button Style="{StaticResource AccentButtonStyle}" Content="➕ Зберегти витяг / нотатку" Command="{Binding AddHighlightOrNoteCommand}" Margin="0,0,0,6" />
+                        <Button Style="{StaticResource AccentButtonStyle}" Content="+ Зберегти витяг / нотатку / закладку" Command="{Binding AddHighlightOrNoteCommand}" Margin="0,0,0,6" />
                         <Button Style="{StaticResource ModernButtonStyle}" Content="📤 Експорт у Markdown (Obsidian)" Command="{Binding ExportAnnotationsToObsidianMdCommand}" />
                     </StackPanel>
 

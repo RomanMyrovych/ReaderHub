@@ -7,6 +7,8 @@
 # Local tool, package, and publish output
 .dotnet_home/
 .temp/
+.nuget/
+build_tmp/
 packages/
 Publish/
 cache/
@@ -17,3 +19,5 @@ SampleLibrary/
 bookhub.db*
 bookhub.template.db
 settings.json
+reader_settings.json
+allreaderbook_settings.json

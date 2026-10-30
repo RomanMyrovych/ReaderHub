@@ -1,8 +1,11 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using BookHub.App.ViewModels;
 using BookHub.App.Views;
+using BookHub.Core.Data;
 using BookHub.Core.Models;
 
 namespace BookHub.App;
@@ -12,6 +15,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private ReaderWindow? _activeReaderWindow;
     private ReaderViewModel? _activeReaderViewModel;
+    private readonly HashSet<long> _booksOpenedInExternalReader = [];
 
     public MainWindow()
     {
@@ -29,7 +33,51 @@ public partial class MainWindow : Window
         _viewModel.OpenWelcomeWizardRequested += OnOpenWelcomeWizardRequested;
 
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
+        Activated += OnMainWindowActivated;
         Closing += OnMainWindowClosing;
+    }
+
+    private async void OnMainWindowActivated(object? sender, EventArgs e)
+    {
+        if (_booksOpenedInExternalReader.Count == 0)
+            return;
+
+        foreach (long bookId in _booksOpenedInExternalReader.ToList())
+        {
+            var refreshed = await _viewModel.Database.GetBookByIdAsync(bookId);
+            if (refreshed != null)
+            {
+                _viewModel.UpdateBookProgressFromReader(refreshed);
+            }
+        }
+    }
+
+    private static string? ResolveStandaloneReaderExecutablePath()
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string[] directCandidates =
+        [
+            Path.Combine(baseDir, "AllReaderBook.exe"),
+            Path.Combine(baseDir, "BookHub.Reader.exe")
+        ];
+        foreach (string candidate in directCandidates)
+        {
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        string root = LibraryDatabase.ResolveProjectRoot();
+        string[] devCandidates =
+        [
+            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "win-x64", "AllReaderBook.exe"),
+            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "AllReaderBook.exe"),
+            Path.Combine(root, "BookHub.Reader", "bin", "Debug", "net9.0-windows", "AllReaderBook.exe"),
+            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "win-x64", "BookHub.Reader.exe"),
+            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "BookHub.Reader.exe"),
+            Path.Combine(root, "BookHub.Reader", "bin", "Debug", "net9.0-windows", "BookHub.Reader.exe")
+        ];
+
+        return devCandidates.FirstOrDefault(File.Exists);
     }
 
     private void RestoreMainWindowAndSplittersState()
@@ -106,6 +154,49 @@ public partial class MainWindow : Window
 
     private async void OnOpenReaderRequested(BookRecord book)
     {
+        string? standaloneReaderExe = ResolveStandaloneReaderExecutablePath();
+        if (!string.IsNullOrWhiteSpace(standaloneReaderExe) && File.Exists(standaloneReaderExe))
+        {
+            try
+            {
+                _booksOpenedInExternalReader.Add(book.Id);
+                var psi = new ProcessStartInfo
+                {
+                    FileName = standaloneReaderExe,
+                    UseShellExecute = false,
+                    WorkingDirectory = Path.GetDirectoryName(standaloneReaderExe) ?? AppDomain.CurrentDomain.BaseDirectory
+                };
+                psi.ArgumentList.Add("--book-id");
+                psi.ArgumentList.Add(book.Id.ToString());
+                psi.ArgumentList.Add("--db-path");
+                psi.ArgumentList.Add(_viewModel.Database.DatabasePath);
+                psi.ArgumentList.Add(book.FilePath);
+
+                var proc = Process.Start(psi);
+                if (proc != null)
+                {
+                    proc.EnableRaisingEvents = true;
+                    proc.Exited += async (_, _) =>
+                    {
+                        try
+                        {
+                            var updated = await _viewModel.Database.GetBookByIdAsync(book.Id);
+                            if (updated != null)
+                            {
+                                Dispatcher.Invoke(() => _viewModel.UpdateBookProgressFromReader(updated));
+                            }
+                        }
+                        catch { }
+                    };
+                    return;
+                }
+            }
+            catch
+            {
+                // Fallback to embedded reader window if standalone launch fails
+            }
+        }
+
         if (_activeReaderWindow != null && _activeReaderWindow.IsLoaded && _activeReaderViewModel != null)
         {
             await _activeReaderViewModel.OpenBookInNewTabAsync(book);

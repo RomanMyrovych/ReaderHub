@@ -16,6 +16,12 @@ public partial class ReaderWindow : Window
     private readonly Func<Task>? _onClosedCallback;
     private DocumentTabViewModel? _observedTab;
 
+    // Snapshot before entering Fullscreen (F11)
+    private WindowState _previousWindowState = WindowState.Normal;
+    private WindowStyle _previousWindowStyle = WindowStyle.SingleBorderWindow;
+    private ResizeMode _previousResizeMode = ResizeMode.CanResize;
+    private Rect _previousNormalBounds = new(120, 80, 1360, 880);
+
     public ReaderWindow(ReaderViewModel viewModel, UserSettingsService settingsService, Func<Task>? onClosedCallback = null)
     {
         InitializeComponent();
@@ -28,6 +34,7 @@ public partial class ReaderWindow : Window
 
         RestoreReaderWindowGeometry();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.FocusViewportRequested += FocusReadingViewport;
 
         Loaded += async (_, _) =>
         {
@@ -51,6 +58,10 @@ public partial class ReaderWindow : Window
         else if (e.PropertyName == nameof(ReaderViewModel.IsAnnotationsVisible))
         {
             ApplyNotesColumnCollapseState(_viewModel.IsAnnotationsVisible);
+        }
+        else if (e.PropertyName == nameof(ReaderViewModel.IsFullScreen))
+        {
+            ApplyFullScreenWindowState(_viewModel.IsFullScreen);
         }
         else if (e.PropertyName == nameof(ReaderViewModel.ActiveTab))
         {
@@ -184,11 +195,72 @@ public partial class ReaderWindow : Window
             Top = workArea.Top + (workArea.Height - Height) / 2;
         }
 
+        _previousNormalBounds = new Rect(Left, Top, Width, Height);
         WindowState = s.ReaderWindowState == "Maximized" ? WindowState.Maximized : WindowState.Normal;
+        _previousWindowState = WindowState;
+    }
+
+    private void ApplyFullScreenWindowState(bool isFullScreen)
+    {
+        if (isFullScreen)
+        {
+            _previousWindowState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            _previousWindowStyle = WindowStyle;
+            _previousResizeMode = ResizeMode;
+            if (WindowState == WindowState.Normal)
+            {
+                _previousNormalBounds = new Rect(Left, Top, Width, Height);
+            }
+
+            MaxHeight = double.PositiveInfinity;
+            MaxWidth = double.PositiveInfinity;
+
+            if (WindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+            }
+
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+        }
+        else
+        {
+            var workArea = SystemParameters.WorkArea;
+            MaxHeight = workArea.Height + 14;
+            MaxWidth = workArea.Width + 14;
+
+            WindowStyle = _previousWindowStyle;
+            ResizeMode = _previousResizeMode;
+
+            if (_previousWindowState == WindowState.Maximized)
+            {
+                WindowState = WindowState.Normal;
+                WindowState = WindowState.Maximized;
+            }
+            else
+            {
+                WindowState = WindowState.Normal;
+                if (_previousNormalBounds.Width >= 700 && _previousNormalBounds.Height >= 500)
+                {
+                    Left = _previousNormalBounds.Left;
+                    Top = _previousNormalBounds.Top;
+                    Width = _previousNormalBounds.Width;
+                    Height = _previousNormalBounds.Height;
+                }
+            }
+        }
+
+        FocusReadingViewport();
     }
 
     private void SaveReaderWindowGeometry()
     {
+        if (_viewModel.IsFullScreen)
+        {
+            _viewModel.ToggleFullScreenCommand.Execute(null);
+        }
+
         var s = _settingsService.Current;
         s.ReaderWindowState = WindowState == WindowState.Maximized ? "Maximized" : "Normal";
         if (WindowState == WindowState.Normal)
@@ -271,6 +343,12 @@ public partial class ReaderWindow : Window
             e.Handled = true;
             await _viewModel.JumpToInputPageCommand.ExecuteAsync(null);
             ScrollReaderToCurrentPage();
+            FocusReadingViewport();
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            FocusReadingViewport();
         }
     }
 
@@ -289,6 +367,7 @@ public partial class ReaderWindow : Window
             int target = (int)Math.Round(PageSlider.Value);
             await _viewModel.ActiveTab.GoToPageAsync(target);
             ScrollReaderToCurrentPage();
+            FocusReadingViewport();
         }
     }
 
@@ -449,6 +528,113 @@ public partial class ReaderWindow : Window
         return null;
     }
 
+    private static bool IsEditableInputFocused() =>
+        Keyboard.FocusedElement is TextBox { IsReadOnly: false };
+
+    private ScrollViewer? GetActiveReadingScrollViewer()
+    {
+        if (_viewModel.ActiveTab is not { } tab)
+            return null;
+
+        if (tab.IsContinuousVerticalMode)
+        {
+            ListBox listBox = tab.IsPdfMode ? PdfContinuousListBox : TextContinuousListBox;
+            return FindVisualChild<ScrollViewer>(listBox);
+        }
+
+        return tab.IsPdfMode ? PdfScrollViewer : TextScrollViewer;
+    }
+
+    private FrameworkElement GetActiveReadingControl()
+    {
+        if (_viewModel.ActiveTab is { } tab)
+        {
+            if (tab.IsContinuousVerticalMode)
+            {
+                return tab.IsPdfMode ? PdfContinuousListBox : TextContinuousListBox;
+            }
+
+            return tab.IsPdfMode ? PdfScrollViewer : TextScrollViewer;
+        }
+
+        return PrimaryViewportHost;
+    }
+
+    public void FocusReadingViewport()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(FocusReadingViewport));
+            return;
+        }
+
+        Keyboard.ClearFocus();
+        FrameworkElement target = GetActiveReadingControl();
+        target.Focus();
+        Keyboard.Focus(target);
+
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+        {
+            FrameworkElement deferredTarget = GetActiveReadingControl();
+            deferredTarget.Focus();
+            Keyboard.Focus(deferredTarget);
+        }));
+    }
+
+    private void ReadingViewport_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsEditableInputFocused())
+        {
+            Keyboard.ClearFocus();
+            FrameworkElement target = GetActiveReadingControl();
+            target.Focus();
+            Keyboard.Focus(target);
+        }
+        else if (Keyboard.FocusedElement is not ScrollViewer and not ListBox)
+        {
+            FrameworkElement target = GetActiveReadingControl();
+            target.Focus();
+            Keyboard.Focus(target);
+        }
+    }
+
+    private void ReadingViewport_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        FocusReadingViewport();
+    }
+
+    private async Task ScrollOrStepVerticalAsync(double deltaPixels)
+    {
+        if (_viewModel.ActiveTab is not { } tab)
+            return;
+
+        ScrollViewer? sv = GetActiveReadingScrollViewer();
+        if (sv != null && sv.ScrollableHeight > 1.0)
+        {
+            double current = sv.VerticalOffset;
+            double target = Math.Clamp(current + deltaPixels, 0.0, sv.ScrollableHeight);
+            if (Math.Abs(target - current) > 0.5)
+            {
+                sv.ScrollToVerticalOffset(target);
+                return;
+            }
+        }
+
+        if (!tab.IsContinuousVerticalMode)
+        {
+            if (deltaPixels > 0)
+            {
+                await _viewModel.NextPageCommand.ExecuteAsync(null);
+                ScrollReaderToCurrentPage();
+            }
+            else if (deltaPixels < 0)
+            {
+                await _viewModel.PreviousPageCommand.ExecuteAsync(null);
+                ScrollReaderToCurrentPage();
+            }
+        }
+    }
+
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.W)
@@ -458,14 +644,35 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        if (Keyboard.FocusedElement is TextBox)
+        if (IsEditableInputFocused())
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                FocusReadingViewport();
+            }
             return;
+        }
+
+        if (e.Key is Key.S or Key.V ||
+            (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.S))
+        {
+            e.Handled = true;
+            if (_viewModel.CanSelectText)
+            {
+                _viewModel.ToggleTextSelectionMode();
+            }
+            else
+            {
+                _viewModel.IsTextSelectionMode = false;
+            }
+            return;
+        }
 
         if (e.Key is Key.F11 or Key.F)
         {
             e.Handled = true;
             _viewModel.ToggleFullScreenCommand.Execute(null);
-            WindowState = _viewModel.IsFullScreen ? WindowState.Maximized : WindowState.Normal;
             return;
         }
 
@@ -476,7 +683,24 @@ public partial class ReaderWindow : Window
             return;
         }
 
-        if (e.Key is Key.Right or Key.PageDown)
+        if (e.Key == Key.Down)
+        {
+            e.Handled = true;
+            await ScrollOrStepVerticalAsync(84.0);
+        }
+        else if (e.Key == Key.Up)
+        {
+            e.Handled = true;
+            await ScrollOrStepVerticalAsync(-84.0);
+        }
+        else if (e.Key == Key.Space)
+        {
+            e.Handled = true;
+            double viewportStep = Math.Max(260.0, PrimaryViewportHost.ActualHeight * 0.85);
+            double direction = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift ? -1.0 : 1.0;
+            await ScrollOrStepVerticalAsync(direction * viewportStep);
+        }
+        else if (e.Key is Key.Right or Key.PageDown)
         {
             e.Handled = true;
             await _viewModel.NextPageCommand.ExecuteAsync(null);

@@ -18,9 +18,313 @@ public static partial class BookFormatParser
         ".html", ".htm", ".md", ".csv", ".ppt", ".pptx", ".xls", ".xlsx"
     };
 
+    /// <summary>
+    /// Strict whitelist of extensions allowed to be opened in BookHub Reader.
+    /// </summary>
+    public static readonly HashSet<string> ReaderAllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf",
+        ".epub", ".fb2", ".mobi", ".azw", ".azw3",
+        ".docx", ".txt", ".md", ".rtf",
+        ".cbz", ".djvu"
+    };
+
+    public static bool IsReaderExtensionSupported(string? filePath, out string extension)
+    {
+        extension = string.IsNullOrWhiteSpace(filePath)
+            ? string.Empty
+            : Path.GetExtension(filePath.Trim('"', ' ')).ToLowerInvariant();
+
+        return !string.IsNullOrWhiteSpace(extension) && ReaderAllowedExtensions.Contains(extension);
+    }
+
+    public static string BuildUnsupportedFormatMessage(string? extension)
+    {
+        string extDisplay = string.IsNullOrWhiteSpace(extension) ? "[без розширення]" : extension.ToLowerInvariant();
+        return $"Формат файлу {extDisplay} не підтримується BookHub Reader. Підтримувані формати: PDF, EPUB, FB2, MOBI, DOCX, TXT, MD, CBZ, DJVU";
+    }
+
+    /// <summary>
+    /// Validates the file's magic bytes (header signature) against its declared extension
+    /// to prevent opening renamed executables or corrupted binary files.
+    /// </summary>
+    public static bool ValidateReaderFileSignature(string filePath, out string errorMessage)
+    {
+        const string CorruptedOrUnsupportedMsg = "Пошкоджений або непідтримуваний файл";
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                errorMessage = CorruptedOrUnsupportedMsg;
+                return false;
+            }
+
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            if (!ReaderAllowedExtensions.Contains(ext))
+            {
+                errorMessage = BuildUnsupportedFormatMessage(ext);
+                return false;
+            }
+
+            var fi = new FileInfo(filePath);
+            if (fi.Length == 0)
+            {
+                if (ext is ".txt" or ".md")
+                    return true;
+
+                errorMessage = CorruptedOrUnsupportedMsg;
+                return false;
+            }
+
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            int toRead = (int)Math.Min(fs.Length, 4096);
+            byte[] header = new byte[toRead];
+            int bytesRead = fs.Read(header, 0, toRead);
+
+            if (bytesRead <= 0)
+            {
+                errorMessage = CorruptedOrUnsupportedMsg;
+                return false;
+            }
+
+            // 1. Global executable binary blacklist: Windows PE ("MZ"), Linux ELF ("\x7FELF"), Mach-O
+            if (bytesRead >= 2 && header[0] == 0x4D && header[1] == 0x5A) // "MZ"
+            {
+                errorMessage = CorruptedOrUnsupportedMsg;
+                return false;
+            }
+            if (bytesRead >= 4 && header[0] == 0x7F && header[1] == 0x45 && header[2] == 0x4C && header[3] == 0x46) // "\x7FELF"
+            {
+                errorMessage = CorruptedOrUnsupportedMsg;
+                return false;
+            }
+
+            // 2. Format-specific Magic Bytes verification
+            switch (ext)
+            {
+                case ".pdf":
+                {
+                    // PDF must contain "%PDF-" within the first 1024 bytes
+                    int scanLen = Math.Min(bytesRead, 1024);
+                    bool hasPdfMagic = false;
+                    for (int i = 0; i <= scanLen - 5; i++)
+                    {
+                        if (header[i] == (byte)'%' &&
+                            header[i + 1] == (byte)'P' &&
+                            header[i + 2] == (byte)'D' &&
+                            header[i + 3] == (byte)'F' &&
+                            header[i + 4] == (byte)'-')
+                        {
+                            hasPdfMagic = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasPdfMagic)
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                case ".epub":
+                case ".docx":
+                case ".cbz":
+                {
+                    // ZIP container signature: "PK\x03\x04"
+                    if (bytesRead < 4 ||
+                        header[0] != 0x50 ||
+                        header[1] != 0x4B ||
+                        header[2] != 0x03 ||
+                        header[3] != 0x04)
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+
+                    try
+                    {
+                        fs.Position = 0;
+                        using var archive = new ZipArchive(fs, ZipArchiveMode.Read, leaveOpen: true);
+                        if (archive.Entries.Count == 0)
+                        {
+                            errorMessage = CorruptedOrUnsupportedMsg;
+                            return false;
+                        }
+
+                        if (ext == ".docx" && archive.GetEntry("word/document.xml") == null)
+                        {
+                            errorMessage = CorruptedOrUnsupportedMsg;
+                            return false;
+                        }
+
+                        if (ext == ".epub" &&
+                            archive.GetEntry("META-INF/container.xml") == null &&
+                            !archive.Entries.Any(e => e.FullName.EndsWith(".opf", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            errorMessage = CorruptedOrUnsupportedMsg;
+                            return false;
+                        }
+                    }
+                    catch
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                case ".djvu":
+                {
+                    // DjVu magic bytes: "AT&TFORM" or "FORM"
+                    bool isAtAndTForm = bytesRead >= 8 &&
+                                        header[0] == (byte)'A' && header[1] == (byte)'T' &&
+                                        header[2] == (byte)'&' && header[3] == (byte)'T' &&
+                                        header[4] == (byte)'F' && header[5] == (byte)'O' &&
+                                        header[6] == (byte)'R' && header[7] == (byte)'M';
+                    bool isForm = bytesRead >= 4 &&
+                                  header[0] == (byte)'F' && header[1] == (byte)'O' &&
+                                  header[2] == (byte)'R' && header[3] == (byte)'M';
+                    if (!isAtAndTForm && !isForm)
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                case ".mobi":
+                case ".azw":
+                case ".azw3":
+                {
+                    // PalmDOC / Mobipocket PDB signature at offset 60..68 ("BOOKMOBI" or "TEXtREAd")
+                    // or ZIP container for KF8/AZW3
+                    bool isZipContainer = bytesRead >= 4 &&
+                                          header[0] == 0x50 && header[1] == 0x4B &&
+                                          header[2] == 0x03 && header[3] == 0x04;
+                    bool isPalmMobi = false;
+                    if (bytesRead >= 68)
+                    {
+                        string pdbMagic = Encoding.ASCII.GetString(header, 60, 8);
+                        isPalmMobi = pdbMagic is "BOOKMOBI" or "TEXtREAd";
+                    }
+
+                    if (!isPalmMobi && !isZipContainer)
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                case ".rtf":
+                {
+                    string prefix = Encoding.ASCII.GetString(header, 0, Math.Min(bytesRead, 64)).TrimStart();
+                    if (!prefix.StartsWith(@"{\rtf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                case ".fb2":
+                {
+                    var (rawSample, _) = EncodingAndTagWriterService.ReadTextWithAutoEncoding(filePath, maxBytes: 4096);
+                    string textSample = rawSample.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
+                    if (!textSample.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) &&
+                        !textSample.Contains("<FictionBook", StringComparison.OrdinalIgnoreCase))
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                case ".txt":
+                case ".md":
+                {
+                    if (!LooksLikeValidTextSample(header, bytesRead))
+                    {
+                        errorMessage = CorruptedOrUnsupportedMsg;
+                        return false;
+                    }
+                    return true;
+                }
+
+                default:
+                    errorMessage = CorruptedOrUnsupportedMsg;
+                    return false;
+            }
+        }
+        catch
+        {
+            errorMessage = CorruptedOrUnsupportedMsg;
+            return false;
+        }
+    }
+
+    private static bool LooksLikeValidTextSample(byte[] buffer, int length)
+    {
+        if (length <= 0) return true;
+
+        // Check for UTF-16 LE / BE BOM
+        if (length >= 2 && ((buffer[0] == 0xFF && buffer[1] == 0xFE) || (buffer[0] == 0xFE && buffer[1] == 0xFF)))
+            return true;
+
+        int nullCount = 0;
+        int controlCount = 0;
+        for (int i = 0; i < length; i++)
+        {
+            byte b = buffer[i];
+            if (b == 0x00)
+            {
+                nullCount++;
+            }
+            else if (b < 0x20 && b != (byte)'\r' && b != (byte)'\n' && b != (byte)'\t' && b != (byte)'\f' && b != (byte)'\b' && b != 0x1B)
+            {
+                controlCount++;
+            }
+        }
+
+        if (nullCount > 0 || controlCount > Math.Max(4, length / 12))
+            return false;
+
+        return true;
+    }
+
     static BookFormatParser()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
+    public static BookRecord CreateStandaloneBookRecord(string filePath, long bookId = 0, int initialPage = 1)
+    {
+        string fullPath = Path.GetFullPath(filePath.Trim('"', ' '));
+        var fi = new FileInfo(fullPath);
+        string ext = fi.Extension.ToLowerInvariant();
+        string fallbackTitle = CleanFileNameTitle(Path.GetFileNameWithoutExtension(fullPath));
+
+        return new BookRecord
+        {
+            Id = bookId,
+            FilePath = fullPath,
+            Title = fallbackTitle,
+            Author = "Невідомий автор",
+            Category = InferCategoryFromPath(fullPath),
+            Extension = ext,
+            FileSize = fi.Exists ? fi.Length : 0,
+            FileModifiedAt = fi.Exists ? fi.LastWriteTime : DateTime.Now,
+            AddedAt = DateTime.Now,
+            LastOpenedAt = DateTime.Now,
+            CurrentPage = Math.Max(1, initialPage),
+            PageCount = 1,
+            DetectedEncoding = ext == ".pdf" ? "PDF Binary" : "UTF-8"
+        };
     }
 
     public static ParsedBookMetadata ParseMetadataAndCover(string filePath)
@@ -556,9 +860,13 @@ public static partial class BookFormatParser
                 ExtractMarkdownHeadings(fullText, toc);
             }
         }
-        else
+        else if (ext is ".mobi" or ".azw" or ".azw3" or ".cbz" or ".djvu")
         {
             fullText = ExtractBinaryFormatSummary(filePath, ext);
+        }
+        else
+        {
+            throw new InvalidDataException(BuildUnsupportedFormatMessage(ext));
         }
 
         var pages = SplitTextIntoPages(fullText, 3800);

@@ -44,9 +44,20 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
     public BookRecord Book { get; }
     public string TabTitle => Book.Title.Length > 28 ? Book.Title[..25] + "..." : Book.Title;
 
+    public const string MissingTextLayerToolTip = "У цьому документі відсутній текстовий шар (лише зображення). Посимвольне виділення недоступне";
+    public const string DefaultTextSelectionToolTip = "Режим виділення тексту";
+
     [ObservableProperty] private bool _isPdfMode;
     [ObservableProperty] private bool _isTextMode;
+    [ObservableProperty] private bool _hasTextLayer = true;
     [ObservableProperty] private bool _isLoading = true;
+
+    public string TextSelectionToolTip => HasTextLayer ? DefaultTextSelectionToolTip : MissingTextLayerToolTip;
+
+    partial void OnHasTextLayerChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TextSelectionToolTip));
+    }
     [ObservableProperty] private string _loadTimeText = string.Empty;
 
     [ObservableProperty] private ReaderViewMode _viewMode = ReaderViewMode.ContinuousVertical;
@@ -236,11 +247,13 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
                 IsPdfMode = true;
                 IsTextMode = false;
 
-                var (session, toc) = await Task.Run(() =>
+                int initialTargetPage = Math.Clamp(Book.CurrentPage, 1, Math.Max(1, Book.PageCount));
+                var (session, toc, hasTextLayer) = await Task.Run(() =>
                 {
                     var s = new PdfDocumentSession(Book.FilePath);
                     var t = s.GetTableOfContents();
-                    return (s, t);
+                    bool hasText = s.HasRecognizedTextLayer(initialTargetPage);
+                    return (s, t, hasText);
                 });
 
                 if (lifecycleVersion != Volatile.Read(ref _lifecycleVersion))
@@ -251,6 +264,7 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
 
                 _pdfSession = session;
                 _documentInitialized = true;
+                HasTextLayer = hasTextLayer;
                 TotalPages = Math.Max(1, session.PageCount);
                 CurrentPage = Math.Clamp(Book.CurrentPage, 1, TotalPages);
                 PageJumpInput = CurrentPage.ToString();
@@ -275,6 +289,10 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
                     return;
                 _textPages = pages;
                 _documentInitialized = true;
+                bool isRasterContainer = ext is ".cbz" or ".cbr" or ".djvu";
+                HasTextLayer = !isRasterContainer &&
+                               _textPages.Any(p => !string.IsNullOrWhiteSpace(p) &&
+                                                   p.Any(c => !char.IsWhiteSpace(c) && !char.IsControl(c)));
                 TotalPages = Math.Max(1, _textPages.Count);
                 CurrentPage = Math.Clamp(Book.CurrentPage, 1, TotalPages);
                 PageJumpInput = CurrentPage.ToString();
@@ -298,6 +316,7 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
             _isSuspended = true;
             IsPdfMode = false;
             IsTextMode = true;
+            HasTextLayer = false;
             CurrentPageText = $"Помилка під час відкриття документа:\n{ex.Message}";
             LoadTimeText = "Помилка відкриття";
         }
@@ -399,27 +418,21 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
 
     public void SuspendRendering()
     {
-        Interlocked.Increment(ref _lifecycleVersion);
         _renderCts?.Cancel();
         _renderCts?.Dispose();
         _renderCts = null;
         lock (_cacheLock)
             _pageBitmapCache.Clear();
 
-        _pdfSession?.Dispose();
-        _pdfSession = null;
-        _textPages.Clear();
-        ContinuousWindowPages.Clear();
-        TableOfContents.Clear();
-        Annotations.Clear();
+        for (int i = 0; i < ContinuousWindowPages.Count; i++)
+        {
+            ContinuousWindowPages[i].PageBitmap = null;
+        }
+
         CurrentPageImage = null;
         SecondSpreadPageImage = null;
-        CurrentPageText = string.Empty;
-        SecondSpreadPageText = string.Empty;
-        IsPdfMode = false;
-        IsTextMode = false;
-        _documentInitialized = false;
         _isSuspended = true;
+        MemoryStatusText = $"Фонова вкладка (стор. {CurrentPage}/{TotalPages}): растри вивантажено";
     }
 
     public async Task RefreshActiveViewAsync()
@@ -631,7 +644,11 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     private readonly UserSettingsService _settingsService;
     private double _lastKnownViewportWidth = 960;
     private double _lastKnownViewportHeight = 760;
+    private bool _wasTocVisibleBeforeFullScreen = true;
+    private bool _wasNotesVisibleBeforeFullScreen = true;
     private bool _disposed;
+
+    public event Action? FocusViewportRequested;
 
     public ObservableCollection<DocumentTabViewModel> OpenTabs { get; } = [];
 
@@ -655,6 +672,32 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _isTocVisible = true;
     [ObservableProperty] private bool _isAnnotationsVisible = true;
     [ObservableProperty] private bool _isTextSelectionMode;
+
+    public bool CanSelectText => ActiveTab is { HasTextLayer: true };
+    public string TextSelectionToolTip => ActiveTab != null
+        ? ActiveTab.TextSelectionToolTip
+        : DocumentTabViewModel.DefaultTextSelectionToolTip;
+
+    partial void OnIsTextSelectionModeChanged(bool value)
+    {
+        if (value && !CanSelectText)
+        {
+            _isTextSelectionMode = false;
+            OnPropertyChanged(nameof(IsTextSelectionMode));
+        }
+    }
+
+    [RelayCommand]
+    public void ToggleTextSelectionMode()
+    {
+        if (!CanSelectText)
+        {
+            IsTextSelectionMode = false;
+            return;
+        }
+
+        IsTextSelectionMode = !IsTextSelectionMode;
+    }
 
     // New Annotation Input State
     [ObservableProperty] private string _newQuoteInput = string.Empty;
@@ -690,9 +733,30 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         SecondarySplitTab = firstTab;
     }
 
+    private void OnActiveTabInternalPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DocumentTabViewModel.HasTextLayer) or nameof(DocumentTabViewModel.TextSelectionToolTip))
+        {
+            OnPropertyChanged(nameof(CanSelectText));
+            OnPropertyChanged(nameof(TextSelectionToolTip));
+            if (!CanSelectText && IsTextSelectionMode)
+            {
+                IsTextSelectionMode = false;
+            }
+        }
+    }
+
     partial void OnActiveTabChanged(DocumentTabViewModel? value)
     {
+        OnPropertyChanged(nameof(CanSelectText));
+        OnPropertyChanged(nameof(TextSelectionToolTip));
+        if (!CanSelectText && IsTextSelectionMode)
+        {
+            IsTextSelectionMode = false;
+        }
+
         if (value == null) return;
+        value.PropertyChanged += OnActiveTabInternalPropertyChanged;
         value.UpdateViewportSize(_lastKnownViewportWidth, _lastKnownViewportHeight);
         if (value.IsDocumentInitialized)
             _ = value.RefreshActiveViewAsync();
@@ -708,8 +772,12 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
 
     partial void OnActiveTabChanging(DocumentTabViewModel? oldValue, DocumentTabViewModel? newValue)
     {
-        if (oldValue != null && oldValue != newValue)
-            oldValue.SuspendRendering();
+        if (oldValue != null)
+        {
+            oldValue.PropertyChanged -= OnActiveTabInternalPropertyChanged;
+            if (oldValue != newValue)
+                oldValue.SuspendRendering();
+        }
     }
 
     partial void OnSelectedZoomPresetChanged(ZoomPresetOption value)
@@ -906,11 +974,20 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ToggleFullScreen()
     {
-        IsFullScreen = !IsFullScreen;
-        if (IsFullScreen)
+        if (!IsFullScreen)
         {
+            _wasTocVisibleBeforeFullScreen = IsTocVisible;
+            _wasNotesVisibleBeforeFullScreen = IsAnnotationsVisible;
+
+            IsFullScreen = true;
             IsTocVisible = false;
             IsAnnotationsVisible = false;
+        }
+        else
+        {
+            IsFullScreen = false;
+            IsTocVisible = _wasTocVisibleBeforeFullScreen;
+            IsAnnotationsVisible = _wasNotesVisibleBeforeFullScreen;
         }
     }
 
@@ -989,14 +1066,36 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     private async Task AddQuickBookmarkAsync()
     {
         if (ActiveTab == null) return;
-        string sample = ActiveTab.GetCurrentPageExtractText();
-        if (sample.Length > 180) sample = sample[..180] + "...";
+        string rawSelection = !string.IsNullOrWhiteSpace(NewQuoteInput) ? NewQuoteInput.Trim() : string.Empty;
+        string conciseQuote;
+
+        if (!string.IsNullOrWhiteSpace(rawSelection))
+        {
+            string normalized = string.Join(" ", rawSelection.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries));
+            conciseQuote = normalized.Length > 45 ? normalized[..45].TrimEnd() + "..." : normalized;
+        }
+        else
+        {
+            string pageText = ActiveTab.GetCurrentPageExtractText();
+            string[] words = pageText.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
+            {
+                conciseQuote = $"Стор. {ActiveTab.CurrentPage}";
+            }
+            else
+            {
+                string snippet = string.Join(" ", words.Take(Math.Min(4, words.Length)));
+                if (snippet.Length > 42) snippet = snippet[..42].TrimEnd();
+                conciseQuote = $"Стор. {ActiveTab.CurrentPage} — {snippet}...";
+            }
+        }
 
         var ann = new AnnotationRecord
         {
             BookId = ActiveTab.Book.Id,
             PageNumber = ActiveTab.CurrentPage,
-            QuoteText = string.IsNullOrWhiteSpace(sample) ? $"Закладка на сторінці {ActiveTab.CurrentPage}" : sample,
+            ScrollOffset = ActiveTab.SavedScrollOffset,
+            QuoteText = conciseQuote,
             CommentText = "Швидка закладка",
             HighlightColor = "#38BDF8",
             IsBookmark = true,
@@ -1005,6 +1104,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
 
         ann.Id = await _database.AddAnnotationAsync(ann);
         ActiveTab.Annotations.Add(ann);
+        IsAnnotationsVisible = true;
     }
 
     [RelayCommand]
@@ -1016,13 +1116,21 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         if (string.IsNullOrWhiteSpace(quote))
         {
             string autoExtract = ActiveTab.GetCurrentPageExtractText();
-            quote = autoExtract.Length > 260 ? autoExtract[..260] + "..." : autoExtract;
+            string[] words = autoExtract.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries);
+            quote = words.Length > 0
+                ? $"Стор. {ActiveTab.CurrentPage} — {string.Join(" ", words.Take(Math.Min(5, words.Length)))}..."
+                : $"Стор. {ActiveTab.CurrentPage}";
+        }
+        else if (quote.Length > 120)
+        {
+            quote = quote[..120].TrimEnd() + "...";
         }
 
         var ann = new AnnotationRecord
         {
             BookId = ActiveTab.Book.Id,
             PageNumber = ActiveTab.CurrentPage,
+            ScrollOffset = ActiveTab.SavedScrollOffset,
             QuoteText = quote,
             CommentText = NewCommentInput.Trim(),
             HighlightColor = SelectedHighlightColor,
@@ -1034,6 +1142,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         ActiveTab.Annotations.Add(ann);
         NewQuoteInput = string.Empty;
         NewCommentInput = string.Empty;
+        FocusViewportRequested?.Invoke();
     }
 
     [RelayCommand]

@@ -75,6 +75,9 @@ public static class PdfiumNative
     public const int FPDF_ANNOT = 0x01;
     public const int FPDF_LCD_TEXT = 0x02;
     public const int FPDF_RENDER_LIMITEDIMAGECACHE = 0x200;
+    public const int FPDF_RENDER_NO_SMOOTHTEXT = 0x0800;
+    public const int FPDF_RENDER_NO_SMOOTHIMAGE = 0x1000;
+    public const int FPDF_RENDER_NO_SMOOTHPATH = 0x2000;
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void FPDF_InitLibrary();
@@ -156,6 +159,48 @@ public static class PdfiumNative
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     public static extern int FPDFText_GetText(IntPtr text_page, int start_index, int count, ushort[] result);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int FPDFText_GetCharIndexAtPos(
+        IntPtr text_page,
+        double x,
+        double y,
+        double xTolerance,
+        double yTolerance);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int FPDFText_GetCharBox(
+        IntPtr text_page,
+        int index,
+        out double left,
+        out double right,
+        out double bottom,
+        out double top);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int FPDFText_CountRects(
+        IntPtr text_page,
+        int start_index,
+        int count);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int FPDFText_GetRect(
+        IntPtr text_page,
+        int rect_index,
+        out double left,
+        out double top,
+        out double right,
+        out double bottom);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int FPDFText_GetBoundedText(
+        IntPtr text_page,
+        double left,
+        double top,
+        double right,
+        double bottom,
+        ushort[]? buffer,
+        int buflen);
 
     public static string GetMetaString(IntPtr doc, string tag)
     {

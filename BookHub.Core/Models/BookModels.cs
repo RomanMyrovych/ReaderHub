@@ -213,6 +213,7 @@ public class AnnotationRecord
     public long Id { get; set; }
     public long BookId { get; set; }
     public int PageNumber { get; set; } = 1;
+    public double ScrollOffset { get; set; }
     public string QuoteText { get; set; } = string.Empty;
     public string CommentText { get; set; } = string.Empty;
     public string HighlightColor { get; set; } = "#FACC15"; // Yellow, Green, Cyan, Pink, Purple

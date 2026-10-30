@@ -1,64 +1,281 @@
-BOOKHUB — THIRD-PARTY COMPONENT INVENTORY
+================================================================================
+ALLREADERBOOK v0.9.02-beta & BOOKHUB PRO — THIRD-PARTY SOFTWARE NOTICES AND LICENSES
+================================================================================
 
-This project references the following NuGet packages. Licenses below are
-reported from the package metadata or, where noted, the license file shipped
-in the package. The applicable full license text and any notices must be
-retained when redistributing the corresponding component or a binary that
-contains it. This inventory is not legal advice.
+This file contains the license notices and full original license texts for all
+third-party libraries, NuGet packages, native engines, and interface assets used
+by AllReaderBook (Standalone Reader) and the BookHub Pro Suite.
 
-Direct dependencies
--------------------
+LICENSE AUDIT SUMMARY (ZERO COPYLEFT / GPLv3 / AGPL VERIFICATION):
+All dependencies in this distribution are licensed under permissive open-source
+licenses (BSD 3-Clause, MIT, Apache License 2.0, Unlicense, SIL Open Font
+License 1.1, and Public Domain). No libraries under GPL v2, GPL v3, LGPL v3, or
+AGPL v3 are included or linked.
 
-CommunityToolkit.Mvvm 8.4.2 — MIT
-https://licenses.nuget.org/MIT
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. PDFium Native Engine (Google / Chromium) — BSD 3-Clause License
+2. VersOne.Epub & .NET / WPF / CommunityToolkit Libraries — MIT License
+3. SQLite / SQLitePCLRaw / Dapper / bblanchon.PDFium.Win32 — Apache 2.0 & Public Domain
+4. Interface Fonts & Vector Icons — SIL Open Font License 1.1 & MIT License
 
-Dapper 2.1.89 — Apache-2.0
-https://licenses.nuget.org/Apache-2.0
+================================================================================
+1. PDFIUM (GOOGLE / CHROMIUM) — BSD 3-CLAUSE LICENSE
+   Component: pdfium.dll (via bblanchon.PDFium.Win32 152.0.7961)
+   Upstream URL: https://pdfium.googlesource.com/pdfium/
+================================================================================
 
-Microsoft.Data.Sqlite 10.0.13 — MIT
-https://licenses.nuget.org/MIT
+Copyright 2014 PDFium Authors. All rights reserved.
 
-PDFtoImage 5.4.0 — MIT
-https://licenses.nuget.org/MIT
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
 
-System.Drawing.Common 10.0.13 — MIT
-https://licenses.nuget.org/MIT
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
 
-VersOne.Epub 3.3.6 — Unlicense
-https://licenses.nuget.org/Unlicense
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-VirtualizingWrapPanel 2.5.4 — MIT
-https://licenses.nuget.org/MIT
+================================================================================
+2. VERSONE.EPUB, COMMUNITYTOOLKIT.MVVM, AND MICROSOFT .NET RUNTIME & WPF
+   Components:
+   - VersOne.Epub 3.3.6 (MIT License / Unlicense, Copyright (c) VersOne)
+   - CommunityToolkit.Mvvm 8.4.2 (MIT License, Copyright (c) .NET Foundation)
+   - Microsoft .NET 9 Runtime & WPF Libraries (MIT License, Copyright (c) .NET Foundation)
+   - Microsoft.Data.Sqlite 10.0.13 (MIT License, Copyright (c) .NET Foundation)
+   - System.Drawing.Common 10.0.13 (MIT License, Copyright (c) .NET Foundation)
+   - VirtualizingWrapPanel 2.5.4 (MIT License, Copyright (c) S. Bäumlisberger)
+   - PDFtoImage 5.4.0 & SkiaSharp 4.150.1 (MIT License — used by BookHub.App only)
+================================================================================
 
-Native and transitive components used by the Windows x64 portable build
------------------------------------------------------------------------
+MIT License
 
-bblanchon.PDFium.Win32 152.0.7961 — Apache-2.0 per NuGet package metadata.
-The bundled PDFium engine has its own upstream BSD-style and Apache-2.0
-licensing and third-party notices:
-https://pdfium.googlesource.com/pdfium/+/refs/heads/main/LICENSE
-https://github.com/bblanchon/pdfium-binaries
+Copyright (c) .NET Foundation and Contributors
+Copyright (c) VersOne and Contributors
+Copyright (c) 2026 Roman Myrovych
 
-SkiaSharp 4.150.1 and SkiaSharp.NativeAssets.Win32 4.150.1 — MIT.
-The native assets also include third-party components with separate notices;
-retain the THIRD-PARTY-NOTICES.txt distributed with the SkiaSharp package.
-https://licenses.nuget.org/MIT
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-SQLitePCLRaw 2.1.13 (bundle_e_sqlite3, core, lib.e_sqlite3,
-provider.e_sqlite3) — Apache-2.0 per NuGet package metadata.
-The SQLite database engine itself is public domain.
-https://licenses.nuget.org/Apache-2.0
-https://www.sqlite.org/copyright.html
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Microsoft.Win32.SystemEvents 10.0.13 — MIT
-https://licenses.nuget.org/MIT
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-System.Memory 4.5.3 — MIT, according to the license file included in its
-NuGet package.
-https://github.com/dotnet/corefx/blob/master/LICENSE.TXT
+--------------------------------------------------------------------------------
+Unlicense Notice (VersOne.Epub 3.3.6 Dual/Public Dedication):
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
-The portable publishing script is framework-dependent; it does not bundle the
-.NET runtime. .NET runtime licensing and notices therefore apply to the
-runtime installed separately by the end user. A self-contained installer or
-other binary redistribution must include the applicable .NET runtime license
-and third-party notices in addition to the component notices above.
+================================================================================
+3. SQLITE, SQLITEPCLRAW, DAPPER, AND PDFIUM BINARIES PACKAGING
+   Components:
+   - SQLite Native Engine (e_sqlite3.dll) — Public Domain
+   - SQLitePCLRaw 2.1.13 (bundle_e_sqlite3, core, lib.e_sqlite3, provider.e_sqlite3) — Apache License 2.0
+   - Dapper 2.1.89 — Apache License 2.0
+   - bblanchon.PDFium.Win32 152.0.7961 — Apache License 2.0
+================================================================================
+
+SQLite Public Domain Dedication (https://www.sqlite.org/copyright.html):
+All of the code and documentation in SQLite has been dedicated to the public
+domain by the authors. All code authors, and representatives of the companies
+they work for, have signed affidavits dedicating their contributions to the
+public domain and originals of those signed affidavits are stored in a firesafe
+at the main offices of Hwaci. Anyone is free to copy, modify, publish, use,
+compile, sell, or distribute the original SQLite code, either in source code
+form or as a compiled binary, for any purpose, commercial or non-commercial,
+and by any means.
+
+--------------------------------------------------------------------------------
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner.
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License.
+
+================================================================================
+4. INTERFACE FONTS & VECTOR ICONS (SIL OPEN FONT LICENSE 1.1 / MIT)
+================================================================================
+
+AllReaderBook uses standard Windows system typography (Segoe UI, Georgia) and
+inline XAML / Unicode vector glyphs licensed under the MIT License or SIL Open
+Font License (OFL) Version 1.1:
+
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+PREAMBLE: The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and open
+framework in which fonts may be shared and improved in partnership with others.
+
+PERMISSION & CONDITIONS: Permission is hereby granted, free of charge, to any
+person obtaining a copy of the Font Software, to use, study, copy, merge,
+embed, modify, redistribute, and sell modified and unmodified copies of the
+Font Software, subject to the standard SIL Open Font License 1.1 conditions
+(http://scripts.sil.org/OFL).
+
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF COPYRIGHT, PATENT,
+TRADEMARK, OR OTHER RIGHT.

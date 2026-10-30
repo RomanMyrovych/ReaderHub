@@ -19,12 +19,27 @@ public class LibraryDatabase
 
     public LibraryDatabase(string? baseDirectory = null)
     {
-        var rootDir = baseDirectory ?? DataDirectory;
-        Directory.CreateDirectory(rootDir);
+        if (!string.IsNullOrWhiteSpace(baseDirectory) &&
+            (baseDirectory.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
+             baseDirectory.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) ||
+             File.Exists(baseDirectory)))
+        {
+            string fullDbPath = Path.GetFullPath(baseDirectory);
+            string rootDir = Path.GetDirectoryName(fullDbPath) ?? DataDirectory;
+            Directory.CreateDirectory(rootDir);
+            DatabasePath = fullDbPath;
+            CacheDirectory = Path.Combine(rootDir, "cache");
+            Directory.CreateDirectory(CacheDirectory);
+        }
+        else
+        {
+            var rootDir = baseDirectory ?? DataDirectory;
+            Directory.CreateDirectory(rootDir);
 
-        DatabasePath = Path.Combine(rootDir, "bookhub.db");
-        CacheDirectory = Path.Combine(rootDir, "cache");
-        Directory.CreateDirectory(CacheDirectory);
+            DatabasePath = Path.Combine(rootDir, "bookhub.db");
+            CacheDirectory = Path.Combine(rootDir, "cache");
+            Directory.CreateDirectory(CacheDirectory);
+        }
 
         _connectionString = new SqliteConnectionStringBuilder
         {
@@ -180,6 +195,7 @@ public class LibraryDatabase
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 BookId INTEGER NOT NULL,
                 PageNumber INTEGER NOT NULL DEFAULT 1,
+                ScrollOffset REAL NOT NULL DEFAULT 0,
                 QuoteText TEXT NOT NULL DEFAULT '',
                 CommentText TEXT NOT NULL DEFAULT '',
                 HighlightColor TEXT NOT NULL DEFAULT '#FACC15',
@@ -201,7 +217,8 @@ public class LibraryDatabase
             "ALTER TABLE Books ADD COLUMN Series TEXT NULL;",
             "ALTER TABLE Books ADD COLUMN VolumeNumber INTEGER NULL;",
             "ALTER TABLE Books ADD COLUMN DetectedEncoding TEXT NULL DEFAULT 'UTF-8';",
-            "ALTER TABLE Books ADD COLUMN IsFtsIndexed INTEGER NOT NULL DEFAULT 0;"
+            "ALTER TABLE Books ADD COLUMN IsFtsIndexed INTEGER NOT NULL DEFAULT 0;",
+            "ALTER TABLE Annotations ADD COLUMN ScrollOffset REAL NOT NULL DEFAULT 0;"
         ];
 
         foreach (var alter in alterColumns)
@@ -269,6 +286,14 @@ public class LibraryDatabase
         return await conn.QueryFirstOrDefaultAsync<BookRecord>(
             "SELECT * FROM Books WHERE FilePath = @FilePath;",
             new { FilePath = filePath });
+    }
+
+    public async Task<BookRecord?> GetBookByIdAsync(long id)
+    {
+        await using var conn = CreateConnection();
+        return await conn.QueryFirstOrDefaultAsync<BookRecord>(
+            "SELECT * FROM Books WHERE Id = @Id;",
+            new { Id = id });
     }
 
     public async Task<long> UpsertBookAsync(BookRecord book)
@@ -628,13 +653,14 @@ public class LibraryDatabase
     {
         await using var conn = CreateConnection();
         return await conn.ExecuteScalarAsync<long>("""
-            INSERT INTO Annotations (BookId, PageNumber, QuoteText, CommentText, HighlightColor, IsBookmark, CreatedAt)
-            VALUES (@BookId, @PageNumber, @QuoteText, @CommentText, @HighlightColor, @IsBookmark, @Now)
+            INSERT INTO Annotations (BookId, PageNumber, ScrollOffset, QuoteText, CommentText, HighlightColor, IsBookmark, CreatedAt)
+            VALUES (@BookId, @PageNumber, @ScrollOffset, @QuoteText, @CommentText, @HighlightColor, @IsBookmark, @Now)
             RETURNING Id;
             """, new
         {
             ann.BookId,
             ann.PageNumber,
+            ann.ScrollOffset,
             ann.QuoteText,
             ann.CommentText,
             ann.HighlightColor,
