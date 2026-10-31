@@ -272,4 +272,28 @@ public sealed class ReaderSettingsService
             return path.Trim('"', ' ');
         }
     }
+
+    public static string ResolveResourceFile(string fileName)
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string direct = Path.Combine(baseDir, fileName);
+        if (File.Exists(direct))
+            return direct;
+
+        var dir = new DirectoryInfo(baseDir);
+        for (int i = 0; i < 5 && dir != null; i++)
+        {
+            string candidateReader = Path.Combine(dir.FullName, "BookHub.Reader", fileName);
+            if (File.Exists(candidateReader))
+                return candidateReader;
+
+            string candidateRoot = Path.Combine(dir.FullName, fileName);
+            if (File.Exists(candidateRoot))
+                return candidateRoot;
+
+            dir = dir.Parent;
+        }
+
+        return direct;
+    }
 }

@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
     <PackageReference Include="VirtualizingWrapPanel" Version="2.5.4" />
   </ItemGroup>
 
@@ -21,6 +23,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>Assets\AllReaderBook.ico</ApplicationIcon>
     <AssemblyTitle>ReaderHub — High-Speed Book Cataloger &amp; PDFium Reader</AssemblyTitle>
     <Product>ReaderHub</Product>
@@ -28,6 +31,8 @@
     <AssemblyVersion>3.62.0.0</AssemblyVersion>
     <FileVersion>3.62.0.0</FileVersion>
     <InformationalVersion>3.62</InformationalVersion>
+    <PackageProjectUrl>https://github.com/RomanMyrovych/ReaderHub</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/RomanMyrovych/ReaderHub</RepositoryUrl>
   </PropertyGroup>
 
 </Project>

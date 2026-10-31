@@ -64,11 +64,11 @@ Name: "assoc_cbz"; Description: "Асоціювати файли .cbz та .djvu
 [Files]
 Source: "{#SourcePublishDir}\*"; DestDir: "{app}"; Excludes: "allreaderbook_settings.json,reader_settings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourcePublishDir}\allreaderbook_settings.json"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
-Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "THIRD_PARTY_LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "BookHub.Reader\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "BookHub.Reader\THIRD_PARTY_LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "BookHub.Reader\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "BookHub.Reader\PRIVACY.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "BookHub.Reader\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppShortcutName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppExeName}"

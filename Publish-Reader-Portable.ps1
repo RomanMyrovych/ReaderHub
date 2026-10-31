@@ -84,24 +84,46 @@ $defaultReaderSettings = @"
     [System.Text.UTF8Encoding]::new($false))
 Write-Host "[OK] Created default allreaderbook_settings.json" -ForegroundColor Green
 
-# 5. Copy MIT LICENSE, THIRD_PARTY_LICENSES.txt, README.md, PRIVACY.md, and CHANGELOG.md
+# 5. Copy standalone AllReaderBook documentation strictly from BookHub.Reader\
+$readerDocDir = Join-Path $PSScriptRoot "BookHub.Reader"
 foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt", "README.md", "PRIVACY.md", "CHANGELOG.md")) {
-    $srcDoc = Join-Path $PSScriptRoot $docFile
+    $srcDoc = Join-Path $readerDocDir $docFile
     if (Test-Path $srcDoc) {
         Copy-Item -Path $srcDoc -Destination (Join-Path $OutputDir $docFile) -Force
-        Write-Host "[OK] Included documentation/legal file: $docFile" -ForegroundColor Green
+        Write-Host "[OK] Included standalone AllReaderBook documentation file: $docFile" -ForegroundColor Green
     }
 }
 
-# 6. Ensure no database, debug symbols, or main cataloger files exist in standalone reader package
+# 6. Ensure no database, debug symbols, libofbooks, or cataloger files exist in standalone reader package
 Get-ChildItem -Path $OutputDir -Filter "*.pdb" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
-foreach ($unwanted in @("bookhub.db", "bookhub.db-shm", "bookhub.db-wal", "settings.json", "reader_settings.json", "BookHub.App.exe", "BookHub.App.dll", "VirtualizingWrapPanel.dll", "libSkiaSharp.dll", "SkiaSharp.dll", "PDFtoImage.dll")) {
+foreach ($unwanted in @(
+    "bookhub.db", "bookhub.db-shm", "bookhub.db-wal", "settings.json", "reader_settings.json",
+    "ReaderHub.exe", "ReaderHub.dll", "BookHub.App.exe", "BookHub.App.dll",
+    "Dapper.dll", "Microsoft.Data.Sqlite.dll", "e_sqlite3.dll",
+    "SQLitePCLRaw.batteries_v2.dll", "SQLitePCLRaw.core.dll", "SQLitePCLRaw.provider.e_sqlite3.dll",
+    "VirtualizingWrapPanel.dll", "libSkiaSharp.dll", "SkiaSharp.dll", "PDFtoImage.dll"
+)) {
     $p = Join-Path $OutputDir $unwanted
     if (Test-Path $p) {
         Remove-Item -LiteralPath $p -Force
     }
 }
+foreach ($unwantedDir in @("libofbooks", "cache", "Backups", "runtimes")) {
+    $d = Join-Path $OutputDir $unwantedDir
+    if (Test-Path $d -PathType Container) {
+        Remove-Item -LiteralPath $d -Recurse -Force
+    }
+}
+
+$zipWinX64 = "$PSScriptRoot\Publish\AllReaderBook_Portable_v0.9.02-beta_$Runtime.zip"
+$zipX64 = "$PSScriptRoot\Publish\AllReaderBook_Portable_v0.9.02-beta_x64.zip"
+if (Test-Path $zipWinX64) { Remove-Item $zipWinX64 -Force }
+if (Test-Path $zipX64) { Remove-Item $zipX64 -Force }
+Compress-Archive -Path "$OutputDir\*" -DestinationPath $zipWinX64 -CompressionLevel Optimal -Force
+Copy-Item -Path $zipWinX64 -Destination $zipX64 -Force
 
 Write-Host ""
 Write-Host "[SUCCESS] AllReaderBook_Portable_v0.9.02-beta created at:" -ForegroundColor Green
 Write-Host "   $OutputDir" -ForegroundColor Yellow
+Write-Host "   $zipWinX64" -ForegroundColor Yellow
+Write-Host "   $zipX64" -ForegroundColor Yellow

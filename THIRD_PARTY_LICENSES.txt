@@ -1,10 +1,10 @@
 ================================================================================
-ALLREADERBOOK v0.9.02-beta & BOOKHUB PRO — THIRD-PARTY SOFTWARE NOTICES AND LICENSES
+READERHUB v3.62 — THIRD-PARTY SOFTWARE NOTICES AND LICENSES
 ================================================================================
 
 This file contains the license notices and full original license texts for all
 third-party libraries, NuGet packages, native engines, and interface assets used
-by AllReaderBook (Standalone Reader) and the BookHub Pro Suite.
+by ReaderHub (Library Manager & Cataloger) and its bundled AllReaderBook reader.
 
 LICENSE AUDIT SUMMARY (ZERO COPYLEFT / GPLv3 / AGPL VERIFICATION):
 All dependencies in this distribution are licensed under permissive open-source

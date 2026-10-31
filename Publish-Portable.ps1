@@ -23,6 +23,9 @@ $env:TMP = "$PSScriptRoot\.temp"
 
 New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME, $env:NUGET_PACKAGES, $env:TEMP, $OutputDir | Out-Null
 
+# Clean previous output directory
+Get-ChildItem -Path $OutputDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " Building ReaderHub v3.62 + AllReaderBook v0.9.02-beta ($Runtime)" -ForegroundColor Cyan
 Write-Host " Output Directory: $OutputDir" -ForegroundColor Cyan
@@ -58,8 +61,8 @@ if ($null -ne $pdfiumCandidate) {
     Write-Host "[OK] Copied native PDFium engine: $($pdfiumCandidate.FullName)" -ForegroundColor Green
 }
 
-# 4. Copy MIT LICENSE, THIRD_PARTY_LICENSES.txt, README.md, and PRIVACY.md
-foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt", "README.md", "PRIVACY.md")) {
+# 4. Copy MIT LICENSE, THIRD_PARTY_LICENSES.txt, README.md, PRIVACY.md, and CHANGELOG.md
+foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt", "README.md", "PRIVACY.md", "CHANGELOG.md")) {
     $srcDoc = Join-Path $PSScriptRoot $docFile
     if (Test-Path $srcDoc) {
         Copy-Item -Path $srcDoc -Destination (Join-Path $OutputDir $docFile) -Force

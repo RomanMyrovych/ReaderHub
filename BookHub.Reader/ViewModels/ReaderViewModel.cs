@@ -6,7 +6,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using BookHub.Core.Data;
 using BookHub.Core.Models;
 using BookHub.Core.Parsers;
 using BookHub.Core.Pdf;
@@ -39,8 +38,6 @@ public partial class ContinuousPageViewModel : ObservableObject
 public partial class DocumentTabViewModel : ObservableObject, IDisposable
 {
     private readonly ReaderSettingsService _readerSettings;
-    private readonly long? _catalogBookId;
-    private readonly string? _catalogDbPath;
     private readonly PdfSurfacePool _surfacePool = new();
 
     private PdfDocumentSession? _pdfSession;
@@ -64,9 +61,6 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
     public event Action<int, double>? PriorityScrollRequested;
 
     public BookRecord Book { get; }
-    public long? CatalogBookId => _catalogBookId;
-    public string? CatalogDbPath => _catalogDbPath;
-    public bool IsCatalogLinked => _catalogBookId is > 0 && !string.IsNullOrWhiteSpace(_catalogDbPath);
 
     public string TabTitle => Book.Title.Length > 28 ? Book.Title[..25] + "..." : Book.Title;
 
@@ -181,14 +175,10 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
         BookRecord book,
         ReaderSettingsService readerSettings,
         string initialZoomMode = "FitWidth",
-        ReaderViewMode initialViewMode = ReaderViewMode.ContinuousVertical,
-        long? catalogBookId = null,
-        string? catalogDbPath = null)
+        ReaderViewMode initialViewMode = ReaderViewMode.ContinuousVertical)
     {
         Book = book;
         _readerSettings = readerSettings;
-        _catalogBookId = catalogBookId ?? (book.Id > 0 ? book.Id : null);
-        _catalogDbPath = catalogDbPath;
         _viewMode = initialViewMode;
         bool isPdf = string.Equals(book.Extension, ".pdf", StringComparison.OrdinalIgnoreCase);
         _isPdfMode = isPdf;
@@ -506,24 +496,11 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
 
     private async Task LoadAnnotationsAsync(int lifecycleVersion)
     {
-        Annotations.Clear();
-        if (IsCatalogLinked && File.Exists(_catalogDbPath))
-        {
-            try
-            {
-                var db = new LibraryDatabase(_catalogDbPath);
-                var dbAnns = await db.GetAnnotationsForBookAsync(_catalogBookId!.Value);
-                if (lifecycleVersion != Volatile.Read(ref _lifecycleVersion))
-                    return;
-                foreach (var a in dbAnns) Annotations.Add(a);
-                return;
-            }
-            catch
-            {
-                // Fallback to reader_settings.json
-            }
-        }
+        await Task.CompletedTask;
+        if (lifecycleVersion != Volatile.Read(ref _lifecycleVersion))
+            return;
 
+        Annotations.Clear();
         var recent = _readerSettings.GetRecentEntry(Book.FilePath);
         if (recent?.LocalAnnotations != null)
         {
@@ -1311,27 +1288,14 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
         await RefreshActiveViewAsync();
     }
 
-    public async Task SaveProgressAsync()
+    public Task SaveProgressAsync()
     {
         if (!BookFormatParser.IsReaderExtensionSupported(Book.FilePath, out _))
-            return;
+            return Task.CompletedTask;
 
         UpdateProgressMetrics(scheduleBackgroundSave: false);
-
         _readerSettings.UpsertRecentFile(Book, Annotations);
-
-        if (IsCatalogLinked && File.Exists(_catalogDbPath))
-        {
-            try
-            {
-                var db = new LibraryDatabase(_catalogDbPath);
-                await db.UpdateReadingProgressAsync(_catalogBookId!.Value, CurrentPage, TotalPages);
-            }
-            catch
-            {
-                // Ignore transient DB lock
-            }
-        }
+        return Task.CompletedTask;
     }
 
     public void Dispose()
@@ -2222,44 +2186,18 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             return;
         }
 
-        BookRecord? book = null;
-        string? dbPath = request.DbPath;
-        long? bookId = request.BookId;
-
-        if (!string.IsNullOrWhiteSpace(dbPath) && File.Exists(dbPath))
+        var recent = _settingsService.GetRecentEntry(fullPath);
+        int startPage = request.InitialPage ?? recent?.CurrentPage ?? 1;
+        BookRecord book = BookFormatParser.CreateStandaloneBookRecord(fullPath, 0, startPage);
+        if (recent != null)
         {
-            try
-            {
-                var db = new LibraryDatabase(dbPath);
-                if (bookId is > 0)
-                {
-                    book = await db.GetBookByIdAsync(bookId.Value);
-                }
-                book ??= await db.GetBookByPathAsync(fullPath);
-                if (book != null)
-                {
-                    bookId = book.Id;
-                }
-            }
-            catch
-            {
-            }
+            book.Title = recent.Title;
+            book.Author = recent.Author;
+            book.PageCount = Math.Max(1, recent.TotalPages);
+            book.ReadingProgress = recent.ReadingProgress;
         }
 
-        if (book == null)
-        {
-            var recent = _settingsService.GetRecentEntry(fullPath);
-            int startPage = request.InitialPage ?? recent?.CurrentPage ?? 1;
-            book = BookFormatParser.CreateStandaloneBookRecord(fullPath, bookId ?? 0, startPage);
-            if (recent != null)
-            {
-                book.Title = recent.Title;
-                book.Author = recent.Author;
-                book.PageCount = Math.Max(1, recent.TotalPages);
-                book.ReadingProgress = recent.ReadingProgress;
-            }
-        }
-        else if (request.InitialPage is > 0)
+        if (request.InitialPage is > 0)
         {
             book.CurrentPage = request.InitialPage.Value;
         }
@@ -2268,9 +2206,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             book,
             _settingsService,
             initialZoomMode: "FitWidth",
-            initialViewMode: ReaderViewMode.ContinuousVertical,
-            catalogBookId: bookId,
-            catalogDbPath: dbPath);
+            initialViewMode: ReaderViewMode.ContinuousVertical);
 
         newTab.UpdateViewportSize(_lastKnownViewportWidth, _lastKnownViewportHeight);
         OpenTabs.Add(newTab);
@@ -2858,7 +2794,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
 
         var ann = new AnnotationRecord
         {
-            BookId = ActiveTab.CatalogBookId ?? 0,
+            BookId = 0,
             PageNumber = ActiveTab.CurrentPage,
             ScrollOffset = ActiveTab.SavedScrollOffset,
             QuoteText = conciseQuote,
@@ -2867,16 +2803,6 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             IsBookmark = true,
             CreatedAt = DateTime.Now
         };
-
-        if (ActiveTab.IsCatalogLinked && File.Exists(ActiveTab.CatalogDbPath))
-        {
-            try
-            {
-                var db = new LibraryDatabase(ActiveTab.CatalogDbPath);
-                ann.Id = await db.AddAnnotationAsync(ann);
-            }
-            catch { }
-        }
 
         ActiveTab.Annotations.Add(ann);
         IsAnnotationsVisible = true;
@@ -2905,7 +2831,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
 
         var ann = new AnnotationRecord
         {
-            BookId = ActiveTab.CatalogBookId ?? 0,
+            BookId = 0,
             PageNumber = ActiveTab.CurrentPage,
             ScrollOffset = ActiveTab.SavedScrollOffset,
             QuoteText = quote,
@@ -2914,16 +2840,6 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             IsBookmark = false,
             CreatedAt = DateTime.Now
         };
-
-        if (ActiveTab.IsCatalogLinked && File.Exists(ActiveTab.CatalogDbPath))
-        {
-            try
-            {
-                var db = new LibraryDatabase(ActiveTab.CatalogDbPath);
-                ann.Id = await db.AddAnnotationAsync(ann);
-            }
-            catch { }
-        }
 
         ActiveTab.Annotations.Add(ann);
         NewQuoteInput = string.Empty;
@@ -2936,15 +2852,6 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     private async Task DeleteAnnotationAsync(AnnotationRecord? ann)
     {
         if (ann == null || ActiveTab == null) return;
-        if (ann.Id > 0 && ActiveTab.IsCatalogLinked && File.Exists(ActiveTab.CatalogDbPath))
-        {
-            try
-            {
-                var db = new LibraryDatabase(ActiveTab.CatalogDbPath);
-                await db.DeleteAnnotationAsync(ann.Id);
-            }
-            catch { }
-        }
         ActiveTab.Annotations.Remove(ann);
         await ActiveTab.SaveProgressAsync();
     }

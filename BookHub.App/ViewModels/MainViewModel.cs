@@ -847,7 +847,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         try
         {
             StatusMessage = "Створення локального резервного архіву (.zip)...";
-            string zipPath = await ExportAndBackupService.CreateOneClickBackupZipAsync(_database);
+            string zipPath = await CatalogBackupService.CreateOneClickBackupZipAsync(_database);
             StatusMessage = $"Резервну копію збережено: {zipPath}";
             MessageBox.Show($"Резервну копію бази SQLite, налаштувань, обкладинок та нотаток створено:\n\n{zipPath}",
                 "Локальний бекап створено", MessageBoxButton.OK, MessageBoxImage.Information);

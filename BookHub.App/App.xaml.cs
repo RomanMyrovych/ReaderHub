@@ -135,7 +135,7 @@ public partial class App : Application
                 ExportAndBackupService.ExportAnnotationsToMarkdown(heavyPdf, anns, mdExportPath);
 
                 // Verify One-Click Backup .zip
-                string backupZip = await ExportAndBackupService.CreateOneClickBackupZipAsync(db);
+                string backupZip = await CatalogBackupService.CreateOneClickBackupZipAsync(db);
 
                 var fb2Book = books.First(b => b.Extension == ".fb2");
                 var fb2Sw = System.Diagnostics.Stopwatch.StartNew();

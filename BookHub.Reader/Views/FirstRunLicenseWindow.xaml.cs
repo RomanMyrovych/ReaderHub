@@ -1,7 +1,6 @@
 using System.IO;
 using System.Text;
 using System.Windows;
-using BookHub.Core.Data;
 using BookHub.Core.Services;
 
 namespace BookHub.Reader.Views;
@@ -47,7 +46,7 @@ public partial class FirstRunLicenseWindow : Window
     private void LoadLicenseText()
     {
         var sb = new StringBuilder();
-        string licensePath = LibraryDatabase.ResolveResourceFile("LICENSE");
+        string licensePath = ReaderSettingsService.ResolveResourceFile("LICENSE");
 
         if (File.Exists(licensePath))
         {

@@ -166,10 +166,11 @@ public partial class MainWindow : Window
                     UseShellExecute = false,
                     WorkingDirectory = Path.GetDirectoryName(standaloneReaderExe) ?? AppDomain.CurrentDomain.BaseDirectory
                 };
-                psi.ArgumentList.Add("--book-id");
-                psi.ArgumentList.Add(book.Id.ToString());
-                psi.ArgumentList.Add("--db-path");
-                psi.ArgumentList.Add(_viewModel.Database.DatabasePath);
+                if (book.CurrentPage > 1)
+                {
+                    psi.ArgumentList.Add("--page");
+                    psi.ArgumentList.Add(book.CurrentPage.ToString());
+                }
                 psi.ArgumentList.Add(book.FilePath);
 
                 var proc = Process.Start(psi);

@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:wpftk="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
         xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
+        xmlns:catalogModels="clr-namespace:BookHub.Core.Models"
         mc:Ignorable="d"
         Title="ReaderHub v3.62 — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
         Icon="pack://application:,,,/Assets/AllReaderBook.ico"
@@ -284,7 +285,7 @@
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  PreviewMouseLeftButtonDown="SmartCollectionsListBox_PreviewMouseLeftButtonDown">
                             <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type models:SmartCollectionRecord}">
+                                <DataTemplate DataType="{x:Type catalogModels:SmartCollectionRecord}">
                                     <TextBlock Text="{Binding Name, StringFormat='⚡ {0}'}" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Padding="2,3" />
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -301,7 +302,7 @@
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  PreviewMouseLeftButtonDown="ShelvesListBox_PreviewMouseLeftButtonDown">
                             <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type models:VirtualShelfRecord}">
+                                <DataTemplate DataType="{x:Type catalogModels:VirtualShelfRecord}">
                                     <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -651,7 +652,7 @@
                         <TextBlock Text="{DynamicResource Loc_RelatedItems}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
                         <ItemsControl ItemsSource="{Binding DataContext.SelectedBookRelatedItems, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,0,8">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type models:RelatedItemRecord}">
+                                <DataTemplate DataType="{x:Type catalogModels:RelatedItemRecord}">
                                     <Border Background="{DynamicResource BgCardBrush}" CornerRadius="5" Padding="8,5" Margin="0,0,0,5">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
