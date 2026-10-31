@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    BookHub Pro Suite v3.5 Portable Publisher (SingleFolder on E:\ or D:\, zero C:\ drive usage)
-    Includes both BookHub.App.exe and standalone AllReaderBook.exe (ReadyToRun).
+    ReaderHub v3.62 Portable Publisher (SingleFolder on E:\ or D:\, zero C:\ drive usage)
+    Includes both ReaderHub.exe and standalone AllReaderBook.exe v0.9.02-beta (ReadyToRun).
 #>
 
 param(
     [string]$Runtime = "win-x64",
     [string]$Configuration = "Release",
-    [string]$OutputDir = "$PSScriptRoot\Publish\BookHub_Portable_v3.5",
+    [string]$OutputDir = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62",
     [switch]$IncludeSampleLibrary
 )
 
@@ -24,12 +24,12 @@ $env:TMP = "$PSScriptRoot\.temp"
 New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME, $env:NUGET_PACKAGES, $env:TEMP, $OutputDir | Out-Null
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Building BookHub Pro Suite v3.5 + AllReaderBook v0.9.0-beta ($Runtime)" -ForegroundColor Cyan
+Write-Host " Building ReaderHub v3.62 + AllReaderBook v0.9.02-beta ($Runtime)" -ForegroundColor Cyan
 Write-Host " Output Directory: $OutputDir" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 2. Publish AllReaderBook (ReadyToRun) and BookHub.App into the shared directory
-dotnet publish "$PSScriptRoot\BookHub.Reader\BookHub.Reader.csproj" `
+# 2. Publish AllReaderBook (ReadyToRun) and ReaderHub into the shared directory
+dotnet publish "$PSScriptRoot\BookHub.Reader\AllReaderBook.csproj" `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
@@ -67,8 +67,8 @@ foreach ($docFile in @("LICENSE", "THIRD_PARTY_LICENSES.txt", "README.md", "PRIV
     }
 }
 
-# 5. Create local cache & Backups folders.
-New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir "cache"), (Join-Path $OutputDir "Backups") | Out-Null
+# 5. Create local cache, Backups & libofbooks folders.
+New-Item -ItemType Directory -Force -Path (Join-Path $OutputDir "cache"), (Join-Path $OutputDir "Backups"), (Join-Path $OutputDir "libofbooks") | Out-Null
 
 # Optional: seed a pre-built empty database template if one is provided in the repo root.
 if (Test-Path "$PSScriptRoot\bookhub.template.db") {
@@ -83,6 +83,14 @@ if ($IncludeSampleLibrary -and (Test-Path "$PSScriptRoot\SampleLibrary")) {
     Write-Host "[OK] Included SampleLibrary demo collection" -ForegroundColor Green
 }
 
+$zipPath = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62_x64.zip"
+$zipPathWin = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62_$Runtime.zip"
+if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+if (Test-Path $zipPathWin) { Remove-Item $zipPathWin -Force }
+Compress-Archive -Path "$OutputDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
+Copy-Item -Path $zipPath -Destination $zipPathWin -Force
+
 Write-Host ""
-Write-Host "[SUCCESS] BookHub_Portable_v3.5 created at:" -ForegroundColor Green
+Write-Host "[SUCCESS] ReaderHub_Portable_v3.62 created at:" -ForegroundColor Green
 Write-Host "   $OutputDir" -ForegroundColor Yellow
+Write-Host "   $zipPath" -ForegroundColor Yellow

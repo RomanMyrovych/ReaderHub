@@ -296,6 +296,23 @@ public class LibraryDatabase
             new { Id = id });
     }
 
+    public async Task UpdateBookFilePathAsync(long bookId, string newFilePath)
+    {
+        await using var conn = CreateConnection();
+        var conflictId = await conn.ExecuteScalarAsync<long?>(
+            "SELECT Id FROM Books WHERE FilePath = @FilePath AND Id <> @Id;",
+            new { FilePath = newFilePath, Id = bookId });
+
+        if (conflictId.HasValue)
+        {
+            await conn.ExecuteAsync("DELETE FROM Books WHERE Id = @ConflictId;", new { ConflictId = conflictId.Value });
+        }
+
+        await conn.ExecuteAsync(
+            "UPDATE Books SET FilePath = @FilePath WHERE Id = @Id;",
+            new { FilePath = newFilePath, Id = bookId });
+    }
+
     public async Task<long> UpsertBookAsync(BookRecord book)
     {
         await using var conn = CreateConnection();

@@ -34,7 +34,7 @@ public partial class App : Application
             {
                 MessageBox.Show(
                     $"Could not initialize the installer database:\n{ex.Message}",
-                    "BookHub Pro installer",
+                    "ReaderHub installer",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
                 Shutdown(1);

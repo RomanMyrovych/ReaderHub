@@ -22,14 +22,19 @@ public sealed class FileScannerService : IDisposable
     public bool ScanDocumentsEnabled { get; set; } = true;
     public bool EnableBackgroundFileWatcher { get; set; } = true;
 
+    // Managed Library (\libofbooks) configuration
+    public bool IsManagedLibraryEnabled { get; set; }
+    public bool ManagedLibraryMoveFiles { get; set; }
+    public string ManagedLibraryPath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "libofbooks");
+
     private static readonly HashSet<string> EbookExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".pdf", ".epub", ".fb2", ".mobi", ".azw", ".azw3", ".djvu", ".djv", ".cbz", ".cbr"
+        ".pdf", ".epub", ".fb2", ".cbz"
     };
 
     private static readonly HashSet<string> DocumentExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".docx", ".doc", ".odt", ".rtf", ".txt", ".md", ".html", ".htm", ".pptx", ".xlsx"
+        ".docx", ".odt", ".rtf", ".txt", ".md", ".html", ".htm"
     };
 
     public event Action<BookRecord>? BookAddedOrUpdated;
@@ -113,6 +118,34 @@ public sealed class FileScannerService : IDisposable
                 await Task.Run(() => CollectSupportedFilesRecursive(folder.Path, candidateFiles, ct), ct);
             }
 
+            if (IsManagedLibraryEnabled && !string.IsNullOrWhiteSpace(ManagedLibraryPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(ManagedLibraryPath);
+                }
+                catch { }
+
+                // Also consolidate any already-cataloged books from outside \libofbooks
+                var existingBooks = await _database.GetAllBooksAsync();
+                foreach (var eb in existingBooks)
+                {
+                    if (!string.IsNullOrWhiteSpace(eb.FilePath) && File.Exists(eb.FilePath))
+                    {
+                        candidateFiles.Add(eb.FilePath);
+                    }
+                }
+
+                if (Directory.Exists(ManagedLibraryPath))
+                {
+                    await Task.Run(() => CollectSupportedFilesRecursive(ManagedLibraryPath, candidateFiles, ct), ct);
+                }
+            }
+
+            candidateFiles = candidateFiles
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             int total = candidateFiles.Count;
             int processed = 0;
 
@@ -186,10 +219,102 @@ public sealed class FileScannerService : IDisposable
         }
     }
 
+    public async Task<string> ConsolidateFileToManagedLibraryAsync(string sourceFilePath, CancellationToken ct = default)
+    {
+        if (!IsManagedLibraryEnabled || string.IsNullOrWhiteSpace(ManagedLibraryPath) || string.IsNullOrWhiteSpace(sourceFilePath))
+            return sourceFilePath;
+
+        try
+        {
+            if (!File.Exists(sourceFilePath))
+                return sourceFilePath;
+
+            string libDir = Path.GetFullPath(ManagedLibraryPath);
+            Directory.CreateDirectory(libDir);
+
+            string fullSource = Path.GetFullPath(sourceFilePath);
+            string libDirWithSep = libDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (fullSource.StartsWith(libDirWithSep, StringComparison.OrdinalIgnoreCase))
+            {
+                return fullSource;
+            }
+
+            string fileName = Path.GetFileName(fullSource);
+            string destPath = Path.Combine(libDir, fileName);
+
+            if (File.Exists(destPath))
+            {
+                var srcInfo = new FileInfo(fullSource);
+                var dstInfo = new FileInfo(destPath);
+                string srcHash = await Task.Run(() => ComputeFastPartialHash(fullSource, srcInfo.Length), ct);
+                string dstHash = await Task.Run(() => ComputeFastPartialHash(destPath, dstInfo.Length), ct);
+
+                if (!string.Equals(srcHash, dstHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    string stem = Path.GetFileNameWithoutExtension(fileName);
+                    string ext = Path.GetExtension(fileName);
+                    string shortHash = srcHash.Length >= 6 ? srcHash[..6] : "copy";
+                    destPath = Path.Combine(libDir, $"{stem}_{shortHash}{ext}");
+                }
+            }
+
+            if (!File.Exists(destPath))
+            {
+                if (ManagedLibraryMoveFiles)
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            File.Move(fullSource, destPath);
+                        }
+                        catch
+                        {
+                            File.Copy(fullSource, destPath, overwrite: false);
+                            try { File.Delete(fullSource); } catch { }
+                        }
+                    }, ct);
+                }
+                else
+                {
+                    await Task.Run(() => File.Copy(fullSource, destPath, overwrite: false), ct);
+                }
+            }
+            else if (ManagedLibraryMoveFiles && !string.Equals(fullSource, destPath, StringComparison.OrdinalIgnoreCase))
+            {
+                try { File.Delete(fullSource); } catch { }
+            }
+
+            var existingOld = await _database.GetBookByPathAsync(sourceFilePath)
+                              ?? await _database.GetBookByPathAsync(fullSource);
+            if (existingOld != null && !string.Equals(existingOld.FilePath, destPath, StringComparison.OrdinalIgnoreCase))
+            {
+                await _database.UpdateBookFilePathAsync(existingOld.Id, destPath);
+            }
+
+            return destPath;
+        }
+        catch
+        {
+            return sourceFilePath;
+        }
+    }
+
     public async Task<BookRecord?> ProcessSingleFileAsync(string filePath, CancellationToken ct = default)
     {
         try
         {
+            var initialFi = new FileInfo(filePath);
+            if (!initialFi.Exists || initialFi.Length == 0) return null;
+
+            if (!BookFormatParser.ValidateFileFormatSignature(filePath, out _))
+                return null;
+
+            if (IsManagedLibraryEnabled)
+            {
+                filePath = await ConsolidateFileToManagedLibraryAsync(filePath, ct);
+            }
+
             var fi = new FileInfo(filePath);
             if (!fi.Exists || fi.Length == 0) return null;
 

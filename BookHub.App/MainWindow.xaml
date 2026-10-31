@@ -6,7 +6,8 @@
         xmlns:wpftk="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
         xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
         mc:Ignorable="d"
-        Title="BookHub — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
+        Title="ReaderHub v3.62 — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
+        Icon="pack://application:,,,/Assets/AllReaderBook.ico"
         Width="1480" Height="900"
         WindowStartupLocation="Manual"
         Background="{DynamicResource BgPrimaryBrush}"
@@ -41,11 +42,11 @@
 
                     <!-- Col 0: Brand -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
-                        <Border Background="{DynamicResource AccentBrush}" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
-                            <TextBlock Text="📚" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                        <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
+                            <Image Source="pack://application:,,,/Assets/AllReaderBook.ico" Width="26" Height="26" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="BookHub Pro" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="ReaderHub" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
                             <TextBlock Text="{DynamicResource Loc_AppSubtitle}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>

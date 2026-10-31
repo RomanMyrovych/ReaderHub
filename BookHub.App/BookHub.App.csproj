@@ -10,19 +10,24 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\AllReaderBook.ico" />
     <Resource Include="Assets\bookhub.ico" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
+    <AssemblyName>ReaderHub</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>Assets\bookhub.ico</ApplicationIcon>
-    <AssemblyTitle>BookHub Pro — High-Speed Book Cataloger &amp; PDFium Reader</AssemblyTitle>
-    <Product>BookHub Pro</Product>
-    <Version>2.0.0</Version>
+    <ApplicationIcon>Assets\AllReaderBook.ico</ApplicationIcon>
+    <AssemblyTitle>ReaderHub — High-Speed Book Cataloger &amp; PDFium Reader</AssemblyTitle>
+    <Product>ReaderHub</Product>
+    <Version>3.62.0</Version>
+    <AssemblyVersion>3.62.0.0</AssemblyVersion>
+    <FileVersion>3.62.0.0</FileVersion>
+    <InformationalVersion>3.62</InformationalVersion>
   </PropertyGroup>
 
 </Project>

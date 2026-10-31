@@ -376,8 +376,20 @@ public sealed class PdfDocumentSession : IDisposable
         }
     }
 
-    public RenderedPageBuffer RenderPageBgra(int pageNumber1Based, double zoom = 1.25, int maxWidthPx = 0, uint backgroundArgb = 0xFFFFFFFF)
+    public RenderedPageBuffer RenderPageBgra(
+        int pageNumber1Based,
+        double zoom = 1.25,
+        int maxWidthPx = 0,
+        uint backgroundArgb = 0xFFFFFFFF,
+        bool smartThemeFilter = false,
+        uint pageTextArgb = 0xFFE2E8F0,
+        bool isDarkTheme = true)
     {
+        int width;
+        int height;
+        int stride;
+        byte[] pixels;
+
         lock (PdfiumNative.SyncRoot)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -402,8 +414,8 @@ public sealed class PdfDocumentSession : IDisposable
                     scale = maxWidthPx / ptW;
                 }
 
-                int width = Math.Clamp((int)Math.Round(ptW * scale), 64, 4096);
-                int height = Math.Clamp((int)Math.Round(ptH * scale), 64, 4096);
+                width = Math.Clamp((int)Math.Round(ptW * scale), 64, 4096);
+                height = Math.Clamp((int)Math.Round(ptH * scale), 64, 4096);
 
                 // FPDFBitmap_BGRA = 4
                 IntPtr bmp = PdfiumNative.FPDFBitmap_CreateEx(width, height, 4, IntPtr.Zero, width * 4);
@@ -412,16 +424,15 @@ public sealed class PdfDocumentSession : IDisposable
 
                 try
                 {
-                    PdfiumNative.FPDFBitmap_FillRect(bmp, 0, 0, width, height, backgroundArgb);
+                    uint initialCanvasArgb = smartThemeFilter ? 0xFFFFFFFFu : backgroundArgb;
+                    PdfiumNative.FPDFBitmap_FillRect(bmp, 0, 0, width, height, initialCanvasArgb);
                     int flags = PdfiumNative.FPDF_ANNOT | PdfiumNative.FPDF_LCD_TEXT | PdfiumNative.FPDF_RENDER_LIMITEDIMAGECACHE;
                     PdfiumNative.FPDF_RenderPageBitmap(bmp, page, 0, 0, width, height, 0, flags);
 
                     IntPtr bufferPtr = PdfiumNative.FPDFBitmap_GetBuffer(bmp);
-                    int stride = PdfiumNative.FPDFBitmap_GetStride(bmp);
-                    byte[] pixels = new byte[stride * height];
+                    stride = PdfiumNative.FPDFBitmap_GetStride(bmp);
+                    pixels = new byte[stride * height];
                     Marshal.Copy(bufferPtr, pixels, 0, pixels.Length);
-
-                    return new RenderedPageBuffer(pageNumber1Based, width, height, stride, pixels);
                 }
                 finally
                 {
@@ -433,6 +444,13 @@ public sealed class PdfDocumentSession : IDisposable
                 PdfiumNative.FPDF_ClosePage(page);
             }
         }
+
+        if (smartThemeFilter)
+        {
+            ApplySmartThemeColorFilter(pixels, pixels.Length, backgroundArgb, pageTextArgb, isDarkTheme);
+        }
+
+        return new RenderedPageBuffer(pageNumber1Based, width, height, stride, pixels);
     }
 
     /// <summary>

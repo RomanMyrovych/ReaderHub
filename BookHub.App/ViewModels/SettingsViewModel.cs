@@ -33,6 +33,31 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _cachePathInfo = string.Empty;
 
+    [ObservableProperty]
+    private bool _isManagedLibraryEnabled;
+
+    [ObservableProperty]
+    private bool _managedLibraryMoveFiles;
+
+    public bool IsManagedLibraryCopyMode
+    {
+        get => !ManagedLibraryMoveFiles;
+        set
+        {
+            if (ManagedLibraryMoveFiles == value)
+            {
+                ManagedLibraryMoveFiles = !value;
+                OnPropertyChanged(nameof(IsManagedLibraryCopyMode));
+            }
+        }
+    }
+
+    [ObservableProperty]
+    private string _managedLibraryCustomPath = string.Empty;
+
+    public string ResolvedManagedLibraryPath =>
+        _settingsService.Current.GetResolvedManagedLibraryPath();
+
     public SettingsViewModel(
         LibraryDatabase database,
         FileScannerService scanner,
@@ -46,9 +71,124 @@ public partial class SettingsViewModel : ObservableObject
         DatabasePathInfo = _database.DatabasePath;
         CachePathInfo = _database.CacheDirectory;
 
-        string currentCode = _settingsService.Current.LanguageCode ?? "uk";
+        var s = _settingsService.Current;
+        string currentCode = s.LanguageCode ?? "uk";
         _selectedLanguageOption = SupportedLanguages.FirstOrDefault(l => l.Code.Equals(currentCode, StringComparison.OrdinalIgnoreCase))
                                   ?? SupportedLanguages[0];
+
+        _isManagedLibraryEnabled = s.IsManagedLibraryEnabled;
+        _managedLibraryMoveFiles = s.ManagedLibraryMoveFiles;
+        _managedLibraryCustomPath = s.ManagedLibraryCustomPath ?? string.Empty;
+    }
+
+    partial void OnIsManagedLibraryEnabledChanged(bool value)
+    {
+        _settingsService.Current.IsManagedLibraryEnabled = value;
+        _settingsService.Save();
+        SyncScannerManagedLibrarySettings();
+        OnPropertyChanged(nameof(ResolvedManagedLibraryPath));
+
+        if (value)
+        {
+            _ = ApplyManagedLibraryConsolidationAsync();
+        }
+    }
+
+    partial void OnManagedLibraryMoveFilesChanged(bool value)
+    {
+        _settingsService.Current.ManagedLibraryMoveFiles = value;
+        _settingsService.Save();
+        OnPropertyChanged(nameof(IsManagedLibraryCopyMode));
+        SyncScannerManagedLibrarySettings();
+
+        if (IsManagedLibraryEnabled)
+        {
+            _ = ApplyManagedLibraryConsolidationAsync();
+        }
+    }
+
+    partial void OnManagedLibraryCustomPathChanged(string value)
+    {
+        _settingsService.Current.ManagedLibraryCustomPath = value?.Trim() ?? string.Empty;
+        _settingsService.Save();
+        OnPropertyChanged(nameof(ResolvedManagedLibraryPath));
+        SyncScannerManagedLibrarySettings();
+    }
+
+    private void SyncScannerManagedLibrarySettings()
+    {
+        var s = _settingsService.Current;
+        string targetLibPath = s.GetResolvedManagedLibraryPath();
+        _scanner.IsManagedLibraryEnabled = s.IsManagedLibraryEnabled;
+        _scanner.ManagedLibraryMoveFiles = s.ManagedLibraryMoveFiles;
+        _scanner.ManagedLibraryPath = targetLibPath;
+
+        if (s.IsManagedLibraryEnabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(targetLibPath);
+            }
+            catch { }
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseManagedLibraryPathAsync()
+    {
+        var dlg = new OpenFolderDialog
+        {
+            Title = "Оберіть диск або папку для створення бібліотеки \\libofbooks",
+            Multiselect = false
+        };
+
+        if (dlg.ShowDialog() == true && !string.IsNullOrWhiteSpace(dlg.FolderName))
+        {
+            ManagedLibraryCustomPath = dlg.FolderName;
+            try
+            {
+                Directory.CreateDirectory(ResolvedManagedLibraryPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не вдалося створити папку бібліотеки:\n{ex.Message}", "ReaderHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (IsManagedLibraryEnabled)
+            {
+                await ApplyManagedLibraryConsolidationAsync();
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetManagedLibraryPathAsync()
+    {
+        ManagedLibraryCustomPath = string.Empty;
+        if (IsManagedLibraryEnabled)
+        {
+            try
+            {
+                Directory.CreateDirectory(ResolvedManagedLibraryPath);
+            }
+            catch { }
+            await ApplyManagedLibraryConsolidationAsync();
+        }
+    }
+
+    private async Task ApplyManagedLibraryConsolidationAsync()
+    {
+        try
+        {
+            string libPath = ResolvedManagedLibraryPath;
+            Directory.CreateDirectory(libPath);
+            await _database.AddRootFolderAsync(libPath);
+            await LoadFoldersAsync();
+            await _scanner.RefreshWatchersAsync();
+            await _onFoldersChangedCallback();
+        }
+        catch { }
     }
 
     partial void OnSelectedLanguageOptionChanged(LanguageOption value)

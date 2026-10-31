@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -637,6 +638,35 @@ public partial class ReaderWindow : Window
 
     private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.F)
+        {
+            e.Handled = true;
+            FocusSearchBox();
+            return;
+        }
+
+        if (e.Key == Key.F3)
+        {
+            e.Handled = true;
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                await _viewModel.PreviousSearchMatchCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                await _viewModel.NextSearchMatchCommand.ExecuteAsync(null);
+            }
+            ScrollReaderToCurrentPage();
+            return;
+        }
+
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.O)
+        {
+            e.Handled = true;
+            await _viewModel.OpenAnotherFileInTabCommand.ExecuteAsync(null);
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.W)
         {
             e.Handled = true;
@@ -745,5 +775,156 @@ public partial class ReaderWindow : Window
         {
             TextScrollViewer.ScrollToTop();
         }
+    }
+
+    private async void TocItemRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TocItem tocItem } element)
+        {
+            if (FindVisualAncestor<TreeViewItem>(element) is { } treeViewItem)
+            {
+                treeViewItem.IsSelected = true;
+            }
+
+            e.Handled = true;
+            if (_viewModel.ActiveTab != null)
+            {
+                await _viewModel.ActiveTab.GoToPageAsync(tocItem.PageNumber);
+            }
+            ScrollReaderToCurrentPage();
+            FocusReadingViewport();
+        }
+    }
+
+    private async void DocumentSearchTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                await _viewModel.PreviousSearchMatchCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                await _viewModel.NextSearchMatchCommand.ExecuteAsync(null);
+            }
+            ScrollReaderToCurrentPage();
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            _viewModel.ClearSearchCommand.Execute(null);
+            FocusReadingViewport();
+        }
+    }
+
+    private void FocusSearchBox()
+    {
+        DocumentSearchTextBox.Focus();
+        Keyboard.Focus(DocumentSearchTextBox);
+        DocumentSearchTextBox.SelectAll();
+    }
+
+    private void OpenRecentDropDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } menu } button)
+        {
+            return;
+        }
+
+        PopulateRecentFilesDropDownMenu(menu);
+        menu.PlacementTarget = button;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void PopulateRecentFilesDropDownMenu(ContextMenu menu)
+    {
+        menu.Items.Clear();
+        _viewModel.RefreshRecentFilesValidation();
+
+        var recentItems = _viewModel.RecentFiles;
+        if (recentItems.Count == 0)
+        {
+            var emptyItem = new MenuItem
+            {
+                Header = "Історія порожня",
+                IsEnabled = false
+            };
+            menu.Items.Add(emptyItem);
+            return;
+        }
+
+        foreach (var recentItem in recentItems)
+        {
+            bool fileExists = File.Exists(recentItem.FilePath);
+            string fileName = !string.IsNullOrWhiteSpace(recentItem.FileName)
+                ? recentItem.FileName
+                : Path.GetFileName(recentItem.FilePath);
+
+            var menuItem = new MenuItem
+            {
+                Header = fileExists ? fileName : $"{fileName} (недоступний)",
+                ToolTip = recentItem.FilePath,
+                IsEnabled = fileExists,
+                Icon = new TextBlock
+                {
+                    Text = "📄",
+                    FontSize = 12,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                }
+            };
+
+            if (fileExists)
+            {
+                var capturedEntry = recentItem;
+                menuItem.Click += async (_, _) =>
+                {
+                    await _viewModel.OpenRecentFileFromToolbarCommand.ExecuteAsync(capturedEntry);
+                };
+            }
+
+            menu.Items.Add(menuItem);
+        }
+
+        var separator = new Separator();
+        if (Application.Current.TryFindResource("ThemedMenuSeparatorStyle") is Style separatorStyle)
+        {
+            separator.Style = separatorStyle;
+        }
+        menu.Items.Add(separator);
+
+        var clearHistoryItem = new MenuItem
+        {
+            Header = "Очистити історію",
+            Icon = new TextBlock
+            {
+                Text = "🗑",
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            }
+        };
+        clearHistoryItem.Click += (_, _) =>
+        {
+            _viewModel.ClearRecentFilesCommand.Execute(null);
+        };
+        menu.Items.Add(clearHistoryItem);
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        while (current is not null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 }

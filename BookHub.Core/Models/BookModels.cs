@@ -299,4 +299,33 @@ public class UserSettings
     public bool ScanDocumentsEnabled { get; set; } = true;
     public bool EnableBackgroundFileWatcher { get; set; } = true;
     public bool IsPortableStorageMode { get; set; } = true;
+
+    // Reader enhancements (ported from AllReaderBook)
+    public bool IsSmartPdfColorFilterEnabled { get; set; } = true;
+    public List<string> RecentReaderFiles { get; set; } = [];
+
+    // Managed Library (\libofbooks) settings
+    public bool IsManagedLibraryEnabled { get; set; } = false;
+    public bool ManagedLibraryMoveFiles { get; set; } = false;
+    public string ManagedLibraryCustomPath { get; set; } = string.Empty;
+
+    public string GetResolvedManagedLibraryPath(string? defaultBaseDirectory = null)
+    {
+        string baseDir = string.IsNullOrWhiteSpace(defaultBaseDirectory)
+            ? AppDomain.CurrentDomain.BaseDirectory
+            : defaultBaseDirectory;
+
+        if (!string.IsNullOrWhiteSpace(ManagedLibraryCustomPath))
+        {
+            string trimmed = ManagedLibraryCustomPath.Trim().TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+            string leafName = System.IO.Path.GetFileName(trimmed);
+            if (string.Equals(leafName, "libofbooks", StringComparison.OrdinalIgnoreCase))
+                return trimmed;
+            return System.IO.Path.Combine(trimmed, "libofbooks");
+        }
+
+        return System.IO.Path.Combine(
+            baseDir.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar),
+            "libofbooks");
+    }
 }

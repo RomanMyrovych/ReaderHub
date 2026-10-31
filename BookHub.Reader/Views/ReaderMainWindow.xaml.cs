@@ -693,10 +693,14 @@ public partial class ReaderMainWindow : Window
     // 2. Миттєва навігація за змістом (TOC Click Fix)
     private async void TocItemRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: TocItem tocItem } &&
+        if (sender is FrameworkElement { DataContext: TocItem tocItem } el &&
             tocItem.PageNumber > 0 &&
             _viewModel.ActiveTab != null)
         {
+            if (FindVisualAncestor<TreeViewItem>(el) is { } treeViewItem)
+            {
+                treeViewItem.IsSelected = true;
+            }
             e.Handled = true;
             _lastTocNavigatedPage = tocItem.PageNumber;
             _lastTocNavigationTick = Environment.TickCount64;

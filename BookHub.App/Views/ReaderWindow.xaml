@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
         xmlns:vm="clr-namespace:BookHub.App.ViewModels"
-        Title="{Binding ActiveTab.Book.Title, StringFormat='{}{0} — BookHub Reader'}"
+        Title="{Binding ActiveTab.Book.Title, StringFormat='{}{0} — ReaderHub'}"
+        Icon="pack://application:,,,/Assets/AllReaderBook.ico"
         Width="1360" Height="880"
         WindowStartupLocation="Manual"
         Background="{DynamicResource BgPrimaryBrush}"
@@ -75,19 +76,30 @@
                                     <Setter Property="Margin" Value="0" />
                                     <Setter Property="BorderThickness" Value="0" />
                                     <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
                                     <Setter Property="Focusable" Value="False" />
                                     <Setter Property="VerticalContentAlignment" Value="Center" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Style>
                             </ListBox.ItemContainerStyle>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{DynamicResource BgCardBrush}"
+                                    <Border x:Name="TabItemBorder"
+                                            Background="{DynamicResource BgCardBrush}"
                                             BorderBrush="{DynamicResource BorderSubtleBrush}"
                                             BorderThickness="1"
                                             CornerRadius="5"
                                             Padding="8,2"
                                             Margin="0,0,5,0"
                                             Height="30"
+                                            Cursor="Hand"
                                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -103,14 +115,16 @@
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding TabTitle}"
+                                            <TextBlock x:Name="TabTitleText"
+                                                       Text="{Binding TabTitle}"
                                                        ToolTip="{Binding Book.Title}"
                                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                                        FontWeight="SemiBold"
                                                        FontSize="12"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,7,0" />
-                                            <Button Content="×"
+                                            <Button x:Name="TabCloseButton"
+                                                    Content="×"
                                                     Width="20"
                                                     Height="24"
                                                     Padding="0"
@@ -121,6 +135,22 @@
                                                     CommandParameter="{Binding}" />
                                         </StackPanel>
                                     </Border>
+                                    <DataTemplate.Triggers>
+                                        <Trigger SourceName="TabItemBorder" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="TabItemBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                            <Setter TargetName="TabItemBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter TargetName="TabItemBorder" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                            <Setter TargetName="TabItemBorder" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                            <Setter TargetName="TabItemBorder" Property="BorderThickness" Value="1.5" />
+                                            <Setter TargetName="TabTitleText" Property="Foreground" Value="#FFFFFF" />
+                                            <Setter TargetName="TabTitleText" Property="FontWeight" Value="Bold" />
+                                            <Setter TargetName="TabCloseButton" Property="Background" Value="#26000000" />
+                                            <Setter TargetName="TabCloseButton" Property="BorderBrush" Value="Transparent" />
+                                            <Setter TargetName="TabCloseButton" Property="Foreground" Value="#FFFFFF" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -147,13 +177,16 @@
                             Margin="4,0,0,0" />
                 </Grid>
 
-                <!-- Right: View Modes & Split-View & Theme -->
+                <!-- Right: View Modes Dropdown & Theme -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ModernButtonStyle}" Content="1 Стор." ToolTip="Одна сторінка" Command="{Binding SetViewModeCommand}" CommandParameter="SinglePage" Margin="0,0,4,0" Padding="7,2" Height="30" />
-                    <Button Style="{StaticResource ModernButtonStyle}" Content="Розворот" ToolTip="Книжковий розворот (дві сторінки)" Command="{Binding SetViewModeCommand}" CommandParameter="TwoPageSpread" Margin="0,0,4,0" Padding="7,2" Height="30" />
-                    <Button Style="{StaticResource ModernButtonStyle}" Content="Безперервний" ToolTip="Вертикальний безперервний скрол" Command="{Binding SetViewModeCommand}" CommandParameter="ContinuousVertical" Margin="0,0,8,0" Padding="7,2" Height="30" />
-
-                    <Button Style="{StaticResource ModernButtonStyle}" Content="◫ Split-View" ToolTip="Розділений екран для паралельного читання" Command="{Binding ToggleSplitViewCommand}" Margin="0,0,8,0" Padding="7,2" Height="30" />
+                    <ComboBox ItemsSource="{Binding ViewModePresets}"
+                              SelectedItem="{Binding SelectedViewModePreset}"
+                              DisplayMemberPath="Label"
+                              Width="136"
+                              Height="30"
+                              Margin="0,0,6,0"
+                              VerticalAlignment="Center"
+                              ToolTip="Режим перегляду (Безперервний / 1 Стор. / Розворот / Split-View)" />
 
                     <ComboBox ItemsSource="{Binding ThemeNames}"
                               SelectedItem="{Binding SelectedThemeName}"
@@ -174,30 +207,26 @@
                 Visibility="{Binding IsFullScreen, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}">
             <Grid Height="44" Margin="8,4">
                 <Grid.ColumnDefinitions>
-                    <!-- Ліва зона: Бічні панелі та навігація -->
+                    <!-- Ліва зона: Зміст, Сторінки та Масштаб -->
                     <ColumnDefinition Width="Auto" />
-                    <!-- Центральна зона: Сторінки та Масштаб -->
+                    <!-- Центральна зона: Пошук у документі на весь вільний простір -->
                     <ColumnDefinition Width="*" />
-                    <!-- Права зона: Інструменти, Експорт, Екран -->
+                    <!-- Права зона: Відкрити ▼, PDF-тема, Виділити, Закладка, Друк, F11, Нотатки -->
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Ліва зона -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ModernButtonStyle}"
-                            Content="📑 Зміст"
-                            ToolTip="Згорнути / Розгорнути панель змісту (TOC)"
-                            Command="{Binding ToggleTocCommand}"
-                            Margin="0,0,6,0" />
-                    <Button Style="{StaticResource ModernButtonStyle}"
-                            Content="📝 Нотатки"
-                            ToolTip="Панель маркерів, нотаток та експорту в Obsidian"
-                            Command="{Binding ToggleAnnotationsCommand}"
-                            Margin="0,0,12,0" />
-                </StackPanel>
+                    <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
+                                  Content="📑 Зміст"
+                                  IsChecked="{Binding IsTocVisible, Mode=TwoWay}"
+                                  ToolTip="Згорнути / Розгорнути панель змісту (TOC)"
+                                  Padding="12,6"
+                                  MinHeight="32"
+                                  FontSize="12.5"
+                                  Margin="0,0,8,0" />
+                    <Border Width="1" Height="22" Background="{DynamicResource BorderSubtleBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
 
-                <!-- Центральна зона (центрується по горизонталі) -->
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource ModernButtonStyle}" Content="⏮" Command="{Binding FirstPageCommand}" ToolTip="На початок (Home)" Margin="2,0" Padding="8,4" />
                     <Button Style="{StaticResource ModernButtonStyle}" Content="◀" Command="{Binding PreviousPageCommand}" ToolTip="Попередня сторінка (PageUp)" Margin="2,0" Padding="8,4" />
 
@@ -217,7 +246,7 @@
                                FontWeight="SemiBold" />
 
                     <Button Style="{StaticResource ModernButtonStyle}" Content="▶" Command="{Binding NextPageCommand}" ToolTip="Наступна сторінка (PageDown)" Margin="2,0" Padding="8,4" />
-                    <Button Style="{StaticResource ModernButtonStyle}" Content="⏭" Command="{Binding LastPageCommand}" ToolTip="В кінець (End)" Margin="2,0,16,0" Padding="8,4" />
+                    <Button Style="{StaticResource ModernButtonStyle}" Content="⏭" Command="{Binding LastPageCommand}" ToolTip="В кінець (End)" Margin="2,0,10,0" Padding="8,4" />
 
                     <!-- Блок масштабу -->
                     <Button Style="{StaticResource ModernButtonStyle}" Content="🔍-" Command="{Binding ZoomOutCommand}" ToolTip="Зменшити" Margin="2,0" Padding="7,4" />
@@ -225,37 +254,235 @@
                               SelectedItem="{Binding SelectedZoomPreset}"
                               DisplayMemberPath="Label"
                               SelectedIndex="0"
-                              Width="130"
+                              Width="126"
                               Margin="2,0"
                               VerticalAlignment="Center"
                               ToolTip="Режим масштабування" />
                     <Button Style="{StaticResource ModernButtonStyle}" Content="🔍+" Command="{Binding ZoomInCommand}" ToolTip="Збільшити" Margin="2,0" Padding="7,4" />
                 </StackPanel>
 
+                <!-- Центральна зона: Пошук у документі на весь звільнений простір -->
+                <Border Grid.Column="1"
+                        Background="{DynamicResource InputBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Height="32"
+                        MinWidth="150"
+                        Margin="8,0"
+                        Padding="6,0"
+                        VerticalAlignment="Center"
+                        IsEnabled="{Binding CanSelectText}"
+                        ToolTipService.ShowOnDisabled="True">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="🔍"
+                                   FontSize="11.5"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="2,0,5,0"
+                                   IsHitTestVisible="False" />
+
+                        <Grid Grid.Column="1" ClipToBounds="True">
+                            <TextBox x:Name="DocumentSearchTextBox"
+                                     Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanSelectText}"
+                                     Background="Transparent"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"
+                                     CaretBrush="{DynamicResource AccentBrush}"
+                                     BorderThickness="0"
+                                     FontSize="12"
+                                     VerticalAlignment="Center"
+                                     VerticalContentAlignment="Center"
+                                     Padding="0"
+                                     KeyDown="DocumentSearchTextBox_KeyDown" />
+                            <TextBlock Text="Пошук у тексті (Ctrl+F)..."
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="11.5"
+                                       VerticalAlignment="Center"
+                                       Margin="2,0,4,0"
+                                       TextTrimming="CharacterEllipsis"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=DocumentSearchTextBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding SearchStatusDisplay}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="6,0,4,0" />
+
+                        <Button Grid.Column="3"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Content="▲"
+                                Command="{Binding PreviousSearchMatchCommand}"
+                                ToolTip="Попередній збіг (Shift+Enter / Shift+F3)"
+                                Width="22"
+                                Height="22"
+                                MinHeight="22"
+                                Padding="0"
+                                FontSize="9.5"
+                                Margin="1,0" />
+
+                        <Button Grid.Column="4"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Content="▼"
+                                Command="{Binding NextSearchMatchCommand}"
+                                ToolTip="Наступний збіг (Enter / F3)"
+                                Width="22"
+                                Height="22"
+                                MinHeight="22"
+                                Padding="0"
+                                FontSize="9.5"
+                                Margin="1,0" />
+
+                        <Button Grid.Column="5"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Content="✕"
+                                Command="{Binding ClearSearchCommand}"
+                                ToolTip="Очистити пошук (Esc)"
+                                Width="22"
+                                Height="22"
+                                MinHeight="22"
+                                Padding="0"
+                                FontSize="10"
+                                Margin="1,0,0,0" />
+                    </Grid>
+                </Border>
+
                 <!-- Права зона -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Випадаюча кнопка «Відкрити» (SplitButton: іконка 📂 + сегмент ▼ з історією останніх файлів) -->
+                    <Border x:Name="OpenFileSplitButtonHost"
+                            Background="{DynamicResource BgCardBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Height="32"
+                            Margin="3,0"
+                            SnapsToDevicePixels="True">
+                        <Border.ContextMenu>
+                            <ContextMenu x:Name="RecentFilesDropDownMenu"
+                                         Placement="Bottom" />
+                        </Border.ContextMenu>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="1" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource SplitButtonMainPartStyle}"
+                                    Content="📂"
+                                    ToolTip="Відкрити книгу з диска (Ctrl+O)"
+                                    Command="{Binding OpenAnotherFileInTabCommand}"
+                                    FontSize="14"
+                                    Padding="9,4"
+                                    MinHeight="30" />
+
+                            <Border Grid.Column="1"
+                                    Width="1"
+                                    Margin="0,5"
+                                    Background="{DynamicResource BorderSubtleBrush}" />
+
+                            <Button x:Name="OpenRecentDropDownButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SplitButtonArrowPartStyle}"
+                                    Content="▼"
+                                    ToolTip="Нещодавно відкриті книги"
+                                    Click="OpenRecentDropDownButton_Click" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Smart Dark & Sepia Mode Toggle for PDF -->
                     <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
-                                  Content="🖊 Виділення"
+                                  Content="🌓 PDF-тема"
+                                  IsChecked="{Binding IsSmartPdfColorFilterEnabled, Mode=TwoWay}"
+                                  Visibility="{Binding ActiveTab.IsPdfMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                  ToolTip="Розумна адаптація кольорів PDF під обрану темну або сепія тему (Smart Dark &amp; Sepia Mode)"
+                                  Margin="3,0" />
+
+                    <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
+                                  Content="🖊 Виділити"
                                   IsChecked="{Binding IsTextSelectionMode}"
                                   IsEnabled="{Binding CanSelectText}"
                                   ToolTip="{Binding TextSelectionToolTip}"
                                   ToolTipService.ShowOnDisabled="True"
-                                  Margin="4,0" />
+                                  Margin="3,0" />
+
                     <Button Style="{StaticResource ModernButtonStyle}"
-                            Content="🔖 Закладка"
                             ToolTip="Додати закладку на поточну сторінку"
                             Command="{Binding AddQuickBookmarkCommand}"
-                            Margin="4,0" />
+                            Width="34"
+                            Height="32"
+                            Padding="0"
+                            Margin="3,0">
+                        <Viewbox Width="16" Height="16" Stretch="Uniform">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M7,3 H17 A2,2 0 0 1 19,5 V21 L12,16.5 L5,21 V5 A2,2 0 0 1 7,3 Z"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="2"
+                                      StrokeLineJoin="Round"
+                                      Fill="Transparent" />
+                                <Path Data="M12,7.5 V12.5 M9.5,10 H14.5"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+
                     <Button Style="{StaticResource ModernButtonStyle}"
-                            Content="🖨 Друк"
+                            Content="🖨"
                             ToolTip="Роздрукувати поточну сторінку"
                             Command="{Binding PrintCurrentPageCommand}"
-                            Margin="4,0" />
+                            Width="34"
+                            Height="32"
+                            Padding="0"
+                            FontSize="14"
+                            Margin="3,0" />
+
                     <Button Style="{StaticResource ModernButtonStyle}"
-                            Content="⛶ F11"
+                            Content="⛶"
                             ToolTip="Повний екран (F11 або F)"
                             Command="{Binding ToggleFullScreenCommand}"
-                            Margin="4,0" />
+                            Width="34"
+                            Height="32"
+                            Padding="0"
+                            FontSize="14"
+                            Margin="3,0" />
+
+                    <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
+                                  Content="📝 Нотатки"
+                                  IsChecked="{Binding IsAnnotationsVisible, Mode=TwoWay}"
+                                  ToolTip="Панель маркерів, нотаток та експорту в Obsidian"
+                                  Padding="12,6"
+                                  MinHeight="32"
+                                  FontSize="12.5"
+                                  Margin="3,0,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -299,23 +526,65 @@
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
                                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                <Setter Property="Background" Value="Transparent" />
                                 <Setter Property="FontSize" Value="12.5" />
-                                <Setter Property="Padding" Value="4,4" />
+                                <Setter Property="Padding" Value="2,1" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                 <Setter Property="IsExpanded" Value="True" />
                             </Style>
                         </TreeView.ItemContainerStyle>
                         <TreeView.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#FFFFFF" />
                             <HierarchicalDataTemplate DataType="{x:Type models:TocItem}" ItemsSource="{Binding Children}">
-                                <Grid Margin="2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" />
-                                    <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
-                                        <TextBlock Text="{Binding PageNumber}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
-                                    </Border>
-                                </Grid>
+                                <Border x:Name="TocItemBorder"
+                                        Margin="1"
+                                        Padding="6,4"
+                                        CornerRadius="5"
+                                        Background="#01000000"
+                                        Cursor="Hand"
+                                        MouseLeftButtonUp="TocItemRow_MouseLeftButtonUp">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="TocTitleText"
+                                                   Grid.Column="0"
+                                                   Text="{Binding Title}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Title}"
+                                                   VerticalAlignment="Center" />
+                                        <Border x:Name="TocPageBadge"
+                                                Grid.Column="1"
+                                                Background="{DynamicResource BgCardBrush}"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:Name="TocPageText"
+                                                       Text="{Binding PageNumber}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                <HierarchicalDataTemplate.Triggers>
+                                    <Trigger SourceName="TocItemBorder" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TocItemBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
+                                        <Setter TargetName="TocItemBorder" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                        <Setter TargetName="TocTitleText" Property="Foreground" Value="#FFFFFF" />
+                                        <Setter TargetName="TocTitleText" Property="FontWeight" Value="SemiBold" />
+                                        <Setter TargetName="TocPageBadge" Property="Background" Value="#38000000" />
+                                        <Setter TargetName="TocPageText" Property="Foreground" Value="#FFFFFF" />
+                                    </DataTrigger>
+                                </HierarchicalDataTemplate.Triggers>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
@@ -752,9 +1021,9 @@
                 Padding="16,8">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0"
@@ -763,6 +1032,8 @@
                            Foreground="{DynamicResource AccentBrush}"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           TextTrimming="CharacterEllipsis"
                            Margin="0,0,16,0" />
 
                 <!-- Fast Scrubber Slider with Live Page Number Preview -->
@@ -778,16 +1049,17 @@
                             VerticalAlignment="Center"
                             PreviewMouseLeftButtonUp="PageSlider_PreviewMouseLeftButtonUp"
                             ValueChanged="PageSlider_ValueChanged" />
-                    <Border Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="8,2" Margin="10,0,0,0">
+                    <Border Background="{DynamicResource BgCardBrush}" CornerRadius="4" MinWidth="68" Padding="8,2" Margin="10,0,0,0">
                         <TextBlock x:Name="SliderPreviewText"
                                    Text="{Binding ActiveTab.CurrentPage, StringFormat='Стор. {0}'}"
                                    FontSize="11.5"
                                    FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
                     </Border>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBlock Text="{Binding ActiveTab.MemoryStatusText}"
                                FontSize="11.5"
                                Foreground="{DynamicResource TextSecondaryBrush}"

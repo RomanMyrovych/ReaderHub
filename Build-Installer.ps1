@@ -8,9 +8,9 @@ $ErrorActionPreference = "Stop"
 
 $appProject = Join-Path $PSScriptRoot "BookHub.App\BookHub.App.csproj"
 $readerProject = Join-Path $PSScriptRoot "BookHub.Reader\AllReaderBook.csproj"
-$payloadDir = Join-Path $PSScriptRoot "Publish\BookHub_InstallerPayload_v3.5.1"
+$payloadDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerPayload_v3.62"
 $readerPayloadDir = Join-Path $PSScriptRoot "Publish\AllReaderBook_InstallerPayload_v0.9.02-beta"
-$installerSettingsDir = Join-Path $PSScriptRoot "Publish\BookHub_InstallerSettings_v3.5.1"
+$installerSettingsDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerSettings_v3.62"
 
 if (-not (Test-Path $readerProject)) {
     throw "Reader project is missing: $readerProject"
@@ -76,8 +76,9 @@ Copy-Item $pdfium.FullName (Join-Path $readerPayloadDir "pdfium.dll") -Force
     [System.Text.UTF8Encoding]::new($false))
 
 if (-not $ReaderOnly) {
-    # 2. Publish Combined BookHub Suite Payload (BookHub.App.exe + AllReaderBook.exe)
-    Write-Host "Publishing self-contained BookHub Suite ($Runtime) to $payloadDir" -ForegroundColor Cyan
+    # 2. Publish Combined ReaderHub Suite Payload (ReaderHub.exe + AllReaderBook.exe)
+    Write-Host "Publishing self-contained ReaderHub Suite ($Runtime) to $payloadDir" -ForegroundColor Cyan
+    Get-ChildItem -Path $payloadDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
     & dotnet publish $readerProject `
         -c $Configuration `
         -r $Runtime `
@@ -100,16 +101,16 @@ if (-not $ReaderOnly) {
         -p:DebugSymbols=false `
         -o $payloadDir
     if ($LASTEXITCODE -ne 0) {
-        throw "dotnet publish BookHub.App failed with exit code $LASTEXITCODE"
+        throw "dotnet publish ReaderHub failed with exit code $LASTEXITCODE"
     }
 
-    foreach ($staleFileName in @("bookhub.db", "bookhub.db-shm", "bookhub.db-wal", "settings.json", "allreaderbook_settings.json", "reader_settings.json", ".bookhub-install-rebase", "BookHub.Reader.exe", "BookHub.Reader.dll")) {
+    foreach ($staleFileName in @("bookhub.db", "bookhub.db-shm", "bookhub.db-wal", "settings.json", "allreaderbook_settings.json", "reader_settings.json", ".bookhub-install-rebase", "BookHub.Reader.exe", "BookHub.Reader.dll", "BookHub.App.exe", "BookHub.App.dll")) {
         $staleFilePath = Join-Path $payloadDir $staleFileName
         if (Test-Path $staleFilePath -PathType Leaf) {
             Remove-Item -LiteralPath $staleFilePath -Force
         }
     }
-    foreach ($staleDirectoryName in @("cache", "Backups", ".temp", "SampleLibrary")) {
+    foreach ($staleDirectoryName in @("cache", "Backups", "libofbooks", ".temp", "SampleLibrary")) {
         $staleDirectoryPath = Join-Path $payloadDir $staleDirectoryName
         if (Test-Path $staleDirectoryPath -PathType Container) {
             Remove-Item -LiteralPath $staleDirectoryPath -Recurse -Force
@@ -117,7 +118,7 @@ if (-not $ReaderOnly) {
     }
 
     $databaseInitialization = Start-Process `
-        -FilePath (Join-Path $payloadDir "BookHub.App.exe") `
+        -FilePath (Join-Path $payloadDir "ReaderHub.exe") `
         -ArgumentList "--initialize-database" `
         -WorkingDirectory "C:\Windows\System32" `
         -Wait `
@@ -139,9 +140,9 @@ if (-not $ReaderOnly) {
         [System.Text.UTF8Encoding]::new($false))
 
     foreach ($requiredPayloadFile in @(
-        "BookHub.App.exe",
+        "ReaderHub.exe",
         "AllReaderBook.exe",
-        "BookHub.App.dll",
+        "ReaderHub.dll",
         "AllReaderBook.dll",
         "hostfxr.dll",
         "coreclr.dll",
@@ -184,7 +185,7 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup compilation for installer.iss failed with exit code $LASTEXITCODE"
         }
-        Write-Host "[SUCCESS] BookHub Suite Installer created: $(Join-Path $outputDir 'BookHubPro_Setup_v3.5_x64.exe')" -ForegroundColor Green
+        Write-Host "[SUCCESS] ReaderHub Suite Installer created: $(Join-Path $outputDir 'ReaderHub_Setup_v3.62_x64.exe')" -ForegroundColor Green
     }
 }
 finally {

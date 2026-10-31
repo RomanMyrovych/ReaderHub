@@ -107,6 +107,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _scanner.ScanEbooksEnabled = s.ScanEbooksEnabled;
         _scanner.ScanDocumentsEnabled = s.ScanDocumentsEnabled;
         _scanner.EnableBackgroundFileWatcher = s.EnableBackgroundFileWatcher;
+        _scanner.IsManagedLibraryEnabled = s.IsManagedLibraryEnabled;
+        _scanner.ManagedLibraryMoveFiles = s.ManagedLibraryMoveFiles;
+        _scanner.ManagedLibraryPath = s.GetResolvedManagedLibraryPath();
 
         ThemeManagerService.ApplyTheme(_selectedThemeName);
         LocalizationService.ApplyLanguage(s.LanguageCode);
@@ -122,6 +125,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _scanner.ScanEbooksEnabled = s.ScanEbooksEnabled;
         _scanner.ScanDocumentsEnabled = s.ScanDocumentsEnabled;
         _scanner.EnableBackgroundFileWatcher = s.EnableBackgroundFileWatcher;
+        _scanner.IsManagedLibraryEnabled = s.IsManagedLibraryEnabled;
+        _scanner.ManagedLibraryMoveFiles = s.ManagedLibraryMoveFiles;
+        _scanner.ManagedLibraryPath = s.GetResolvedManagedLibraryPath();
 
         ThemeManagerService.ApplyTheme(SelectedThemeName);
         LocalizationService.ApplyLanguage(s.LanguageCode);
@@ -753,6 +759,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public async Task RunFullScanAsync()
     {
         if (IsScanning) return;
+
+        var s = _settingsService.Current;
+        _scanner.ScanEbooksEnabled = s.ScanEbooksEnabled;
+        _scanner.ScanDocumentsEnabled = s.ScanDocumentsEnabled;
+        _scanner.EnableBackgroundFileWatcher = s.EnableBackgroundFileWatcher;
+        _scanner.IsManagedLibraryEnabled = s.IsManagedLibraryEnabled;
+        _scanner.ManagedLibraryMoveFiles = s.ManagedLibraryMoveFiles;
+        _scanner.ManagedLibraryPath = s.GetResolvedManagedLibraryPath();
 
         _scanCts?.Cancel();
         _scanCts = new CancellationTokenSource();

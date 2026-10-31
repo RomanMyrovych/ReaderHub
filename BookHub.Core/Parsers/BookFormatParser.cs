@@ -19,13 +19,13 @@ public static partial class BookFormatParser
     };
 
     /// <summary>
-    /// Strict whitelist of extensions allowed to be opened in BookHub Reader.
+    /// Strict whitelist of extensions allowed to be opened in ReaderHub / AllReaderBook.
     /// </summary>
     public static readonly HashSet<string> ReaderAllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".pdf",
         ".epub", ".fb2", ".mobi", ".azw", ".azw3",
-        ".docx", ".txt", ".md", ".rtf",
+        ".docx", ".odt", ".txt", ".md", ".rtf", ".html", ".htm",
         ".cbz", ".djvu"
     };
 
@@ -41,8 +41,16 @@ public static partial class BookFormatParser
     public static string BuildUnsupportedFormatMessage(string? extension)
     {
         string extDisplay = string.IsNullOrWhiteSpace(extension) ? "[без розширення]" : extension.ToLowerInvariant();
-        return $"Формат файлу {extDisplay} не підтримується BookHub Reader. Підтримувані формати: PDF, EPUB, FB2, MOBI, DOCX, TXT, MD, CBZ, DJVU";
+        return $"Формат файлу {extDisplay} не підтримується ReaderHub. Підтримувані формати: PDF, EPUB, FB2, CBZ, DOCX, ODT, RTF, TXT, MD, HTML";
     }
+
+    public static string GetOpenFileDialogFilter() =>
+        "Усі підтримувані формати (*.pdf;*.epub;*.fb2;*.cbz;*.docx;*.odt;*.rtf;*.txt;*.md;*.html;*.htm)|*.pdf;*.epub;*.fb2;*.cbz;*.docx;*.odt;*.rtf;*.txt;*.md;*.html;*.htm|" +
+        "Книги (PDF, EPUB, FB2, CBZ)|*.pdf;*.epub;*.fb2;*.cbz|" +
+        "Документи (DOCX, ODT, RTF, TXT, MD, HTML)|*.docx;*.odt;*.rtf;*.txt;*.md;*.html;*.htm";
+
+    public static bool ValidateFileFormatSignature(string filePath, out string errorMessage) =>
+        ValidateReaderFileSignature(filePath, out errorMessage);
 
     /// <summary>
     /// Validates the file's magic bytes (header signature) against its declared extension
@@ -71,7 +79,7 @@ public static partial class BookFormatParser
             var fi = new FileInfo(filePath);
             if (fi.Length == 0)
             {
-                if (ext is ".txt" or ".md")
+                if (ext is ".txt" or ".md" or ".html" or ".htm")
                     return true;
 
                 errorMessage = CorruptedOrUnsupportedMsg;
@@ -132,6 +140,7 @@ public static partial class BookFormatParser
 
                 case ".epub":
                 case ".docx":
+                case ".odt":
                 case ".cbz":
                 {
                     // ZIP container signature: "PK\x03\x04"
@@ -156,6 +165,12 @@ public static partial class BookFormatParser
                         }
 
                         if (ext == ".docx" && archive.GetEntry("word/document.xml") == null)
+                        {
+                            errorMessage = CorruptedOrUnsupportedMsg;
+                            return false;
+                        }
+
+                        if (ext == ".odt" && archive.GetEntry("content.xml") == null)
                         {
                             errorMessage = CorruptedOrUnsupportedMsg;
                             return false;
@@ -247,6 +262,8 @@ public static partial class BookFormatParser
 
                 case ".txt":
                 case ".md":
+                case ".html":
+                case ".htm":
                 {
                     if (!LooksLikeValidTextSample(header, bytesRead))
                     {

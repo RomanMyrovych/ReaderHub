@@ -18,6 +18,8 @@ using Microsoft.Win32;
 namespace BookHub.App.ViewModels;
 
 public sealed record ZoomPresetOption(string Key, string Label);
+public sealed record ViewModePresetOption(string Key, string Label);
+public sealed record RecentReaderFileEntry(string FilePath, string FileName, bool FileExists);
 
 public partial class ContinuousPageViewModel : ObservableObject
 {
@@ -39,6 +41,7 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private bool _documentInitialized;
     private bool _isSuspended;
+    private bool _isSmartPdfColorFilterEnabled = true;
     private int _lifecycleVersion;
 
     public BookRecord Book { get; }
@@ -103,16 +106,32 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
         _ => $"{Math.Round(ZoomLevel * 100)}%"
     };
 
-    public DocumentTabViewModel(BookRecord book, LibraryDatabase database, string initialZoomMode = "FitWidth", ReaderViewMode initialViewMode = ReaderViewMode.ContinuousVertical)
+    public DocumentTabViewModel(BookRecord book, LibraryDatabase database, string initialZoomMode = "FitWidth", ReaderViewMode initialViewMode = ReaderViewMode.ContinuousVertical, bool isSmartPdfColorFilterEnabled = true)
     {
         Book = book;
         _database = database;
         _viewMode = initialViewMode;
+        _isSmartPdfColorFilterEnabled = isSmartPdfColorFilterEnabled;
         CurrentPage = Math.Max(1, book.CurrentPage);
         PageJumpInput = CurrentPage.ToString();
         _zoomMode = string.IsNullOrWhiteSpace(initialZoomMode) ? "FitWidth" : initialZoomMode;
         RecalculatePageLayout();
         SavedScrollOffset = Math.Max(0, (CurrentPage - 1) * ContinuousPageItemHeight);
+    }
+
+    public bool IsSmartPdfColorFilterEnabled
+    {
+        get => _isSmartPdfColorFilterEnabled;
+        set
+        {
+            if (_isSmartPdfColorFilterEnabled == value) return;
+            _isSmartPdfColorFilterEnabled = value;
+            OnPropertyChanged();
+            if (IsPdfMode)
+            {
+                _ = ClearCacheAndReloadThemeAsync();
+            }
+        }
     }
 
     public void ApplyZoomMode(string modeKey)
@@ -556,7 +575,8 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
 
         try
         {
-            var buf = await Task.Run(() => _pdfSession.RenderPageBgra(pageNumber, zoom, maxWidthPx, bgArgb), ct);
+            bool applySmartFilter = _isSmartPdfColorFilterEnabled && bgArgb != 0xFFFFFFFFu;
+            var buf = await Task.Run(() => _pdfSession.RenderPageBgra(pageNumber, zoom, maxWidthPx, bgArgb, applySmartFilter), ct);
             if (ct.IsCancellationRequested) return null;
 
             var bmp = BitmapSource.Create(buf.Width, buf.Height, 96, 96, PixelFormats.Bgra32, null, buf.Pixels, buf.Stride);
@@ -581,6 +601,42 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
             return _pdfSession.ExtractPageText(CurrentPage);
         }
         return CurrentPageText;
+    }
+
+    public async Task<List<int>> FindPagesMatchingQueryAsync(string query, CancellationToken ct = default)
+    {
+        var matches = new List<int>();
+        if (string.IsNullOrWhiteSpace(query) || !HasTextLayer)
+            return matches;
+
+        string q = query.Trim();
+        return await Task.Run(() =>
+        {
+            if (IsPdfMode && _pdfSession != null)
+            {
+                for (int p = 1; p <= TotalPages; p++)
+                {
+                    if (ct.IsCancellationRequested) break;
+                    string text = _pdfSession.ExtractPageText(p);
+                    if (!string.IsNullOrEmpty(text) && text.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matches.Add(p);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < _textPages.Count; i++)
+                {
+                    if (ct.IsCancellationRequested) break;
+                    if (!string.IsNullOrEmpty(_textPages[i]) && _textPages[i].Contains(q, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matches.Add(i + 1);
+                    }
+                }
+            }
+            return matches;
+        }, ct);
     }
 
     private void UpdateProgressMetrics()
@@ -646,11 +702,17 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     private double _lastKnownViewportHeight = 760;
     private bool _wasTocVisibleBeforeFullScreen = true;
     private bool _wasNotesVisibleBeforeFullScreen = true;
+    private bool _suppressViewModePresetSync;
+    private CancellationTokenSource? _searchCts;
+    private List<int> _matchedPages = [];
+    private int _currentMatchedPageIndex = -1;
     private bool _disposed;
 
     public event Action? FocusViewportRequested;
 
     public ObservableCollection<DocumentTabViewModel> OpenTabs { get; } = [];
+    public ObservableCollection<RecentReaderFileEntry> RecentFiles { get; } = [];
+    public bool HasRecentFiles => RecentFiles.Count > 0;
 
     public IReadOnlyList<ZoomPresetOption> ZoomPresets { get; } =
     [
@@ -664,14 +726,33 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         new("200%", "200%")
     ];
 
+    public IReadOnlyList<ViewModePresetOption> ViewModePresets { get; } =
+    [
+        new("ContinuousVertical", "Безперервний"),
+        new("SinglePage", "1 Стор."),
+        new("TwoPageSpread", "Розворот"),
+        new("SplitView", "◫ Split-View")
+    ];
+
     [ObservableProperty] private DocumentTabViewModel? _activeTab;
     [ObservableProperty] private DocumentTabViewModel? _secondarySplitTab;
     [ObservableProperty] private ZoomPresetOption _selectedZoomPreset;
+    [ObservableProperty] private ViewModePresetOption _selectedViewModePreset;
     [ObservableProperty] private bool _isSplitViewEnabled;
     [ObservableProperty] private bool _isFullScreen;
     [ObservableProperty] private bool _isTocVisible = true;
     [ObservableProperty] private bool _isAnnotationsVisible = true;
     [ObservableProperty] private bool _isTextSelectionMode;
+    [ObservableProperty] private bool _isSmartPdfColorFilterEnabled = true;
+
+    // In-document search state
+    [ObservableProperty] private string _searchQuery = string.Empty;
+    [ObservableProperty] private int _searchTotalMatches;
+    [ObservableProperty] private int _searchCurrentMatchNumber;
+    public bool HasSearchQuery => !string.IsNullOrEmpty(SearchQuery);
+    public string SearchStatusDisplay => SearchTotalMatches > 0
+        ? $"{SearchCurrentMatchNumber} / {SearchTotalMatches}"
+        : "0 / 0";
 
     public bool CanSelectText => ActiveTab is { HasTextLayer: true };
     public string TextSelectionToolTip => ActiveTab != null
@@ -713,6 +794,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         _database = database;
         _settingsService = settingsService;
         _selectedThemeName = _settingsService.Current.ThemeName;
+        _isSmartPdfColorFilterEnabled = _settingsService.Current.IsSmartPdfColorFilterEnabled;
 
         string savedZoomMode = string.IsNullOrWhiteSpace(_settingsService.Current.ReaderZoomMode)
             ? "FitWidth"
@@ -727,10 +809,176 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
                                          Enum.IsDefined(savedViewMode)
             ? savedViewMode
             : ReaderViewMode.ContinuousVertical;
-        var firstTab = new DocumentTabViewModel(initialBook, _database, _selectedZoomPreset.Key, initialViewMode);
+        _selectedViewModePreset = ViewModePresets.FirstOrDefault(v => v.Key.Equals(initialViewMode.ToString(), StringComparison.OrdinalIgnoreCase))
+                                  ?? ViewModePresets[0];
+
+        AddRecentFile(initialBook.FilePath);
+        RefreshRecentFilesValidation();
+
+        var firstTab = new DocumentTabViewModel(initialBook, _database, _selectedZoomPreset.Key, initialViewMode, _isSmartPdfColorFilterEnabled);
         OpenTabs.Add(firstTab);
         ActiveTab = firstTab;
         SecondarySplitTab = firstTab;
+    }
+
+    partial void OnIsSmartPdfColorFilterEnabledChanged(bool value)
+    {
+        _settingsService.Current.IsSmartPdfColorFilterEnabled = value;
+        _settingsService.Save();
+        foreach (var tab in OpenTabs)
+        {
+            tab.IsSmartPdfColorFilterEnabled = value;
+        }
+        FocusViewportRequested?.Invoke();
+    }
+
+    partial void OnSelectedViewModePresetChanged(ViewModePresetOption value)
+    {
+        if (value == null || _suppressViewModePresetSync)
+            return;
+
+        if (value.Key == "SplitView")
+        {
+            if (!IsSplitViewEnabled)
+                ToggleSplitView();
+        }
+        else
+        {
+            if (IsSplitViewEnabled)
+                IsSplitViewEnabled = false;
+            SetViewMode(value.Key);
+        }
+
+        FocusViewportRequested?.Invoke();
+    }
+
+    private void SyncSelectedViewModePreset(ViewModePresetOption preset)
+    {
+        if (ReferenceEquals(SelectedViewModePreset, preset))
+            return;
+
+        _suppressViewModePresetSync = true;
+        try
+        {
+            SelectedViewModePreset = preset;
+        }
+        finally
+        {
+            _suppressViewModePresetSync = false;
+        }
+    }
+
+    public void AddRecentFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        string normalized = Path.GetFullPath(filePath);
+        var list = _settingsService.Current.RecentReaderFiles;
+        list.RemoveAll(p => string.Equals(p, normalized, StringComparison.OrdinalIgnoreCase));
+        list.Insert(0, normalized);
+        if (list.Count > 15)
+            list.RemoveRange(15, list.Count - 15);
+        _settingsService.Save();
+        RefreshRecentFilesValidation();
+    }
+
+    public void RefreshRecentFilesValidation()
+    {
+        RecentFiles.Clear();
+        foreach (string path in _settingsService.Current.RecentReaderFiles)
+        {
+            if (string.IsNullOrWhiteSpace(path)) continue;
+            RecentFiles.Add(new RecentReaderFileEntry(path, Path.GetFileName(path), File.Exists(path)));
+        }
+        OnPropertyChanged(nameof(HasRecentFiles));
+    }
+
+    [RelayCommand]
+    private async Task OpenRecentFileFromToolbarAsync(RecentReaderFileEntry? entry)
+    {
+        if (entry == null || !File.Exists(entry.FilePath)) return;
+        using var scanner = new FileScannerService(_database);
+        var rec = await scanner.ProcessSingleFileAsync(entry.FilePath) ?? await _database.GetBookByPathAsync(entry.FilePath);
+        if (rec != null)
+        {
+            await OpenBookInNewTabAsync(rec);
+        }
+    }
+
+    [RelayCommand]
+    private void ClearRecentFiles()
+    {
+        _settingsService.Current.RecentReaderFiles.Clear();
+        _settingsService.Save();
+        RefreshRecentFilesValidation();
+    }
+
+    partial void OnSearchQueryChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasSearchQuery));
+        _ = ExecuteDocumentSearchAsync(value);
+    }
+
+    private async Task ExecuteDocumentSearchAsync(string query)
+    {
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
+
+        if (string.IsNullOrWhiteSpace(query) || ActiveTab == null || !ActiveTab.HasTextLayer)
+        {
+            _matchedPages.Clear();
+            _currentMatchedPageIndex = -1;
+            SearchTotalMatches = 0;
+            SearchCurrentMatchNumber = 0;
+            OnPropertyChanged(nameof(SearchStatusDisplay));
+            return;
+        }
+
+        var pages = await ActiveTab.FindPagesMatchingQueryAsync(query, ct);
+        if (ct.IsCancellationRequested) return;
+
+        _matchedPages = pages;
+        SearchTotalMatches = _matchedPages.Count;
+        if (_matchedPages.Count > 0)
+        {
+            _currentMatchedPageIndex = 0;
+            SearchCurrentMatchNumber = 1;
+            OnPropertyChanged(nameof(SearchStatusDisplay));
+            await ActiveTab.GoToPageAsync(_matchedPages[0]);
+        }
+        else
+        {
+            _currentMatchedPageIndex = -1;
+            SearchCurrentMatchNumber = 0;
+            OnPropertyChanged(nameof(SearchStatusDisplay));
+        }
+    }
+
+    [RelayCommand]
+    private async Task NextSearchMatchAsync()
+    {
+        if (_matchedPages.Count == 0 || ActiveTab == null) return;
+        _currentMatchedPageIndex = (_currentMatchedPageIndex + 1) % _matchedPages.Count;
+        SearchCurrentMatchNumber = _currentMatchedPageIndex + 1;
+        OnPropertyChanged(nameof(SearchStatusDisplay));
+        await ActiveTab.GoToPageAsync(_matchedPages[_currentMatchedPageIndex]);
+    }
+
+    [RelayCommand]
+    private async Task PreviousSearchMatchAsync()
+    {
+        if (_matchedPages.Count == 0 || ActiveTab == null) return;
+        _currentMatchedPageIndex = (_currentMatchedPageIndex - 1 + _matchedPages.Count) % _matchedPages.Count;
+        SearchCurrentMatchNumber = _currentMatchedPageIndex + 1;
+        OnPropertyChanged(nameof(SearchStatusDisplay));
+        await ActiveTab.GoToPageAsync(_matchedPages[_currentMatchedPageIndex]);
+    }
+
+    [RelayCommand]
+    private void ClearSearch()
+    {
+        SearchQuery = string.Empty;
     }
 
     private void OnActiveTabInternalPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -849,8 +1097,9 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         }
 
         // Always open new document in the active ZoomMode (default FitWidth) and current viewport size
+        AddRecentFile(book.FilePath);
         ReaderViewMode selectedMode = ActiveTab?.ViewMode ?? ParseSavedViewMode();
-        var newTab = new DocumentTabViewModel(book, _database, SelectedZoomPreset?.Key ?? "FitWidth", selectedMode);
+        var newTab = new DocumentTabViewModel(book, _database, SelectedZoomPreset?.Key ?? "FitWidth", selectedMode, IsSmartPdfColorFilterEnabled);
         newTab.UpdateViewportSize(_lastKnownViewportWidth, _lastKnownViewportHeight);
         OpenTabs.Add(newTab);
         ActiveTab = newTab;
@@ -873,11 +1122,16 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         var dlg = new OpenFileDialog
         {
             Title = "Відкрити книгу або документ у новій вкладці",
-            Filter = "Усі підтримувані книги|*.pdf;*.epub;*.fb2;*.docx;*.md;*.txt;*.html;*.djvu;*.mobi;*.cbz;*.rtf;*.odt|Усі файли|*.*"
+            Filter = BookFormatParser.GetOpenFileDialogFilter()
         };
 
         if (dlg.ShowDialog() == true && File.Exists(dlg.FileName))
         {
+            if (!BookFormatParser.ValidateFileFormatSignature(dlg.FileName, out string err))
+            {
+                MessageBox.Show(err, "ReaderHub", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             using var scanner = new FileScannerService(_database);
             var rec = await scanner.ProcessSingleFileAsync(dlg.FileName) ?? await _database.GetBookByPathAsync(dlg.FileName);
             if (rec != null)
@@ -944,6 +1198,14 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         };
         _settingsService.Current.LastReaderViewMode = ActiveTab.ViewMode.ToString();
         _settingsService.Save();
+
+        if (!IsSplitViewEnabled)
+        {
+            string modeKey = ActiveTab.ViewMode.ToString();
+            var match = ViewModePresets.FirstOrDefault(v => v.Key.Equals(modeKey, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+                SyncSelectedViewModePreset(match);
+        }
     }
 
     private ReaderViewMode ParseSavedViewMode() =>
@@ -969,6 +1231,11 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         {
             SecondarySplitTab = OpenTabs.LastOrDefault() ?? ActiveTab;
         }
+
+        string targetKey = IsSplitViewEnabled ? "SplitView" : (ActiveTab?.ViewMode.ToString() ?? "ContinuousVertical");
+        var match = ViewModePresets.FirstOrDefault(v => v.Key.Equals(targetKey, StringComparison.OrdinalIgnoreCase));
+        if (match != null)
+            SyncSelectedViewModePreset(match);
     }
 
     [RelayCommand]

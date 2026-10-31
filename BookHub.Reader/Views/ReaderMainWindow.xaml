@@ -726,27 +726,65 @@
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
                                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                <Setter Property="Background" Value="Transparent" />
                                 <Setter Property="FontSize" Value="12.5" />
-                                <Setter Property="Padding" Value="4,4" />
+                                <Setter Property="Padding" Value="2,1" />
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                 <Setter Property="IsExpanded" Value="True" />
                             </Style>
                         </TreeView.ItemContainerStyle>
                         <TreeView.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#FFFFFF" />
                             <HierarchicalDataTemplate DataType="{x:Type models:TocItem}" ItemsSource="{Binding Children}">
-                                <Grid Margin="2"
-                                      Background="#01000000"
-                                      Cursor="Hand"
-                                      MouseLeftButtonUp="TocItemRow_MouseLeftButtonUp">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" VerticalAlignment="Center" />
-                                    <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding PageNumber}" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
-                                    </Border>
-                                </Grid>
+                                <Border x:Name="TocItemBorder"
+                                        Margin="1"
+                                        Padding="6,4"
+                                        CornerRadius="5"
+                                        Background="#01000000"
+                                        Cursor="Hand"
+                                        MouseLeftButtonUp="TocItemRow_MouseLeftButtonUp">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="TocTitleText"
+                                                   Grid.Column="0"
+                                                   Text="{Binding Title}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Title}"
+                                                   VerticalAlignment="Center" />
+                                        <Border x:Name="TocPageBadge"
+                                                Grid.Column="1"
+                                                Background="{DynamicResource BgCardBrush}"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                Margin="8,0,0,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:Name="TocPageText"
+                                                       Text="{Binding PageNumber}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource AccentBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                <HierarchicalDataTemplate.Triggers>
+                                    <Trigger SourceName="TocItemBorder" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TocItemBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                    </Trigger>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TreeViewItem}}" Value="True">
+                                        <Setter TargetName="TocItemBorder" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                        <Setter TargetName="TocTitleText" Property="Foreground" Value="#FFFFFF" />
+                                        <Setter TargetName="TocTitleText" Property="FontWeight" Value="SemiBold" />
+                                        <Setter TargetName="TocPageBadge" Property="Background" Value="#38000000" />
+                                        <Setter TargetName="TocPageText" Property="Foreground" Value="#FFFFFF" />
+                                    </DataTrigger>
+                                </HierarchicalDataTemplate.Triggers>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
                     </TreeView>
