@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using BookHub.App.ViewModels;
 using BookHub.App.Views;
 using BookHub.Core.Data;
@@ -24,6 +26,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
 
         RestoreMainWindowAndSplittersState();
+        RestoreTableColumnsState();
 
         _viewModel.OpenReaderRequested += OnOpenReaderRequested;
         _viewModel.OpenSettingsRequested += OnOpenSettingsRequested;
@@ -372,5 +375,136 @@ public partial class MainWindow : Window
         {
             OnOpenReaderRequested(_viewModel.SelectedBook);
         }
+    }
+
+    private void BooksDataGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject dep)
+            return;
+
+        var header = FindVisualParent<DataGridColumnHeader>(dep);
+        var presenter = FindVisualParent<DataGridColumnHeadersPresenter>(dep);
+
+        if (header != null || presenter != null)
+        {
+            ShowColumnVisibilityContextMenu();
+            e.Handled = true;
+        }
+    }
+
+    private void ShowColumnVisibilityContextMenu()
+    {
+        var menu = new ContextMenu
+        {
+            Background = (Brush)FindResource("BgSecondaryBrush"),
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            BorderBrush = (Brush)FindResource("BorderSubtleBrush"),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(4)
+        };
+
+        var titleItem = new MenuItem
+        {
+            Header = "Відображення колонок",
+            IsEnabled = false,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("AccentBrush")
+        };
+        menu.Items.Add(titleItem);
+        menu.Items.Add(new Separator());
+
+        foreach (var col in BooksDataGrid.Columns)
+        {
+            string headerText = col.Header?.ToString() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(headerText))
+                continue;
+
+            var item = new MenuItem
+            {
+                Header = headerText,
+                IsCheckable = true,
+                IsChecked = col.Visibility == Visibility.Visible,
+                StaysOpenOnClick = true
+            };
+
+            var targetCol = col;
+            item.Click += (s, ev) =>
+            {
+                int visibleCount = BooksDataGrid.Columns.Count(c => c.Visibility == Visibility.Visible);
+                if (targetCol.Visibility == Visibility.Visible && visibleCount <= 1)
+                {
+                    item.IsChecked = true;
+                    return;
+                }
+
+                targetCol.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+                SaveColumnVisibilitySettings();
+            };
+
+            menu.Items.Add(item);
+        }
+
+        menu.Items.Add(new Separator());
+
+        var showAllItem = new MenuItem
+        {
+            Header = "Показати всі колонки"
+        };
+        showAllItem.Click += (_, _) =>
+        {
+            foreach (var c in BooksDataGrid.Columns)
+            {
+                c.Visibility = Visibility.Visible;
+            }
+            SaveColumnVisibilitySettings();
+        };
+        menu.Items.Add(showAllItem);
+
+        menu.PlacementTarget = BooksDataGrid;
+        menu.Placement = PlacementMode.MousePoint;
+        menu.IsOpen = true;
+    }
+
+    private void RestoreTableColumnsState()
+    {
+        var s = _viewModel.SettingsService.Current;
+        if (s.HiddenTableColumns != null && s.HiddenTableColumns.Count > 0)
+        {
+            var hiddenSet = new HashSet<string>(s.HiddenTableColumns, StringComparer.OrdinalIgnoreCase);
+            foreach (var col in BooksDataGrid.Columns)
+            {
+                string header = col.Header?.ToString() ?? string.Empty;
+                if (!string.IsNullOrEmpty(header) && hiddenSet.Contains(header))
+                {
+                    col.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    col.Visibility = Visibility.Visible;
+                }
+            }
+        }
+    }
+
+    private void SaveColumnVisibilitySettings()
+    {
+        var s = _viewModel.SettingsService.Current;
+        s.HiddenTableColumns = BooksDataGrid.Columns
+            .Where(c => c.Visibility != Visibility.Visible)
+            .Select(c => c.Header?.ToString() ?? string.Empty)
+            .Where(h => !string.IsNullOrEmpty(h))
+            .ToList();
+        _viewModel.SettingsService.Save();
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T parent)
+                return parent;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
     }
 }

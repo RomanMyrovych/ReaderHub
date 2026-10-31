@@ -341,14 +341,24 @@
                                 SnapsToDevicePixels="True">
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <ContentPresenter Grid.Column="0"
+                                <Border x:Name="checkContainer" Grid.Column="0" Width="20" Height="18" Visibility="Collapsed" Margin="0,0,6,0">
+                                    <Path x:Name="checkMark"
+                                          Data="M 2,7 L 6,11 L 13,3"
+                                          Stroke="{DynamicResource AccentBrush}"
+                                          StrokeThickness="2"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Visibility="Collapsed" />
+                                </Border>
+                                <ContentPresenter Grid.Column="1"
                                                   ContentSource="Header"
                                                   RecognizesAccessKey="False"
                                                   VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
+                                <TextBlock Grid.Column="2"
                                            Text="{TemplateBinding InputGestureText}"
                                            Foreground="{DynamicResource TextMutedBrush}"
                                            FontSize="11"
@@ -357,6 +367,12 @@
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="IsCheckable" Value="True">
+                                <Setter TargetName="checkContainer" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
                             <Trigger Property="IsHighlighted" Value="True">
                                 <Setter TargetName="itemBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
                                 <Setter TargetName="itemBorder" Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
