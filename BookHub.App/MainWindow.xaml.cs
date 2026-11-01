@@ -38,6 +38,15 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
         Activated += OnMainWindowActivated;
         Closing += OnMainWindowClosing;
+        KeyDown += OnMainWindowKeyDown;
+
+        _viewModel.PropertyChanged += (sender, args) =>
+        {
+            if (args.PropertyName == nameof(MainViewModel.IsManagementMode))
+            {
+                UpdateManagementModeLayout(_viewModel.IsManagementMode);
+            }
+        };
     }
 
     private async void OnMainWindowActivated(object? sender, EventArgs e)
@@ -72,12 +81,12 @@ public partial class MainWindow : Window
         string root = LibraryDatabase.ResolveProjectRoot();
         string[] devCandidates =
         [
+            Path.Combine(root, "AllReaderBook", "bin", "Release", "net9.0-windows", "win-x64", "AllReaderBook.exe"),
+            Path.Combine(root, "AllReaderBook", "bin", "Release", "net9.0-windows", "AllReaderBook.exe"),
+            Path.Combine(root, "AllReaderBook", "bin", "Debug", "net9.0-windows", "AllReaderBook.exe"),
             Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "win-x64", "AllReaderBook.exe"),
             Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "AllReaderBook.exe"),
-            Path.Combine(root, "BookHub.Reader", "bin", "Debug", "net9.0-windows", "AllReaderBook.exe"),
-            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "win-x64", "BookHub.Reader.exe"),
-            Path.Combine(root, "BookHub.Reader", "bin", "Release", "net9.0-windows", "BookHub.Reader.exe"),
-            Path.Combine(root, "BookHub.Reader", "bin", "Debug", "net9.0-windows", "BookHub.Reader.exe")
+            Path.Combine(root, "BookHub.Reader", "bin", "Debug", "net9.0-windows", "AllReaderBook.exe")
         ];
 
         return devCandidates.FirstOrDefault(File.Exists);
@@ -148,8 +157,16 @@ public partial class MainWindow : Window
             s.MainWindowTop = Top;
         }
 
-        s.LeftSidebarWidth = LeftSidebarColumn.ActualWidth > 180 ? LeftSidebarColumn.ActualWidth : 280;
-        s.RightInspectorWidth = RightInspectorColumn.ActualWidth > 200 ? RightInspectorColumn.ActualWidth : 330;
+        if (!_viewModel.IsManagementMode)
+        {
+            s.LeftSidebarWidth = LeftSidebarColumn.ActualWidth > 180 ? LeftSidebarColumn.ActualWidth : 280;
+            s.RightInspectorWidth = RightInspectorColumn.ActualWidth > 200 ? RightInspectorColumn.ActualWidth : 330;
+        }
+        else
+        {
+            s.LeftSidebarWidth = _savedLeftSidebarWidth > 180 ? _savedLeftSidebarWidth : 280;
+            s.RightInspectorWidth = _savedRightInspectorWidth > 200 ? _savedRightInspectorWidth : 330;
+        }
 
         _viewModel.SettingsService.Save();
         _viewModel.Dispose();
@@ -495,6 +512,80 @@ public partial class MainWindow : Window
             .Where(h => !string.IsNullOrEmpty(h))
             .ToList();
         _viewModel.SettingsService.Save();
+    }
+
+    private double _savedLeftSidebarWidth = 280;
+    private double _savedRightInspectorWidth = 330;
+
+    private void UpdateManagementModeLayout(bool isManagement)
+    {
+        if (isManagement)
+        {
+            if (LeftSidebarColumn.ActualWidth > 80)
+                _savedLeftSidebarWidth = LeftSidebarColumn.ActualWidth;
+            else if (_viewModel.SettingsService.Current.LeftSidebarWidth > 80)
+                _savedLeftSidebarWidth = _viewModel.SettingsService.Current.LeftSidebarWidth;
+
+            if (RightInspectorColumn.ActualWidth > 80)
+                _savedRightInspectorWidth = RightInspectorColumn.ActualWidth;
+            else if (_viewModel.SettingsService.Current.RightInspectorWidth > 80)
+                _savedRightInspectorWidth = _viewModel.SettingsService.Current.RightInspectorWidth;
+
+            LeftSidebarColumn.MinWidth = 0;
+            LeftSidebarColumn.Width = new GridLength(0);
+            LeftSidebarBorder.Visibility = Visibility.Collapsed;
+            LeftSidebarSplitter.Visibility = Visibility.Collapsed;
+            if (LeftSidebarSplitterCol != null) LeftSidebarSplitterCol.Width = new GridLength(0);
+
+            RightInspectorColumn.MinWidth = 0;
+            RightInspectorColumn.Width = new GridLength(0);
+            RightInspectorBorder.Visibility = Visibility.Collapsed;
+            RightInspectorSplitter.Visibility = Visibility.Collapsed;
+            if (RightInspectorSplitterCol != null) RightInspectorSplitterCol.Width = new GridLength(0);
+        }
+        else
+        {
+            var s = _viewModel.SettingsService.Current;
+            double leftW = _savedLeftSidebarWidth > 180 ? _savedLeftSidebarWidth : (s.LeftSidebarWidth > 180 ? s.LeftSidebarWidth : 280);
+            double rightW = _savedRightInspectorWidth > 200 ? _savedRightInspectorWidth : (s.RightInspectorWidth > 200 ? s.RightInspectorWidth : 330);
+
+            LeftSidebarColumn.MinWidth = 210;
+            LeftSidebarColumn.Width = new GridLength(Math.Clamp(leftW, 210, 460));
+            LeftSidebarBorder.Visibility = Visibility.Visible;
+            LeftSidebarSplitter.Visibility = Visibility.Visible;
+            if (LeftSidebarSplitterCol != null) LeftSidebarSplitterCol.Width = new GridLength(5);
+
+            RightInspectorColumn.MinWidth = 240;
+            RightInspectorColumn.Width = new GridLength(Math.Clamp(rightW, 240, 520));
+            RightInspectorBorder.Visibility = Visibility.Visible;
+            RightInspectorSplitter.Visibility = Visibility.Visible;
+            if (RightInspectorSplitterCol != null) RightInspectorSplitterCol.Width = new GridLength(5);
+        }
+    }
+
+    private void OnMainWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && _viewModel.IsManagementMode)
+        {
+            _viewModel.IsManagementMode = false;
+            e.Handled = true;
+        }
+    }
+
+    private void BooksWorkspace_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (_viewModel.IsManagementMode && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            if (e.Delta > 0)
+            {
+                _viewModel.IncreaseManagementZoomCommand.Execute(null);
+            }
+            else if (e.Delta < 0)
+            {
+                _viewModel.DecreaseManagementZoomCommand.Execute(null);
+            }
+        }
     }
 
     private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject

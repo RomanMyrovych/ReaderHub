@@ -1,0 +1,66 @@
+<Window x:Class="BookHub.App.Views.PromptDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ReaderHub"
+        Width="460" Height="220"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="{DynamicResource BgPrimaryBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Border BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1.5"
+            CornerRadius="10"
+            Background="{DynamicResource BgPrimaryBrush}"
+            Padding="22,18">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Title -->
+            <TextBlock x:Name="TitleTextBlock"
+                       Grid.Row="0"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       Margin="0,0,0,8" />
+
+            <!-- Prompt Message -->
+            <TextBlock x:Name="PromptTextBlock"
+                       Grid.Row="1"
+                       FontSize="13"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+
+            <!-- Input Box -->
+            <TextBox x:Name="InputTextBox"
+                     Grid.Row="2"
+                     Style="{StaticResource ModernTextBoxStyle}"
+                     FontSize="13.5"
+                     VerticalAlignment="Top"
+                     KeyDown="InputTextBox_KeyDown" />
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="3"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,14,0,0">
+                <Button Content="Скасувати"
+                        Style="{StaticResource ModernButtonStyle}"
+                        Padding="16,6"
+                        Margin="0,0,10,0"
+                        Click="CancelButton_Click" />
+                <Button x:Name="OkButton"
+                        Content="Зберегти"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Padding="20,6"
+                        Click="OkButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

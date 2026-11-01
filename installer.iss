@@ -10,14 +10,14 @@
 
 #define MyAppName "ReaderHub"
 #define MyReaderName "AllReaderBook"
-#define MyAppVersion "3.62"
+#define MyAppVersion "3.65-beta"
 #define MyReaderVersion "0.9.02-beta"
 #define MyAppPublisher "ReaderHub Open-Source Engineering (Roman Myrovych)"
 #define MyAppExeName "ReaderHub.exe"
 #define MyReaderExeName "AllReaderBook.exe"
-#define SourcePublishDir "Publish\ReaderHub_InstallerPayload_v3.62"
-#define SourceInstallerSettings "Publish\ReaderHub_InstallerSettings_v3.62\settings.json"
-#define SourceReaderSettings "Publish\ReaderHub_InstallerSettings_v3.62\allreaderbook_settings.json"
+#define SourcePublishDir "Publish\ReaderHub_InstallerPayload_v3.65"
+#define SourceInstallerSettings "Publish\ReaderHub_InstallerSettings_v3.65\settings.json"
+#define SourceReaderSettings "Publish\ReaderHub_InstallerSettings_v3.65\allreaderbook_settings.json"
 
 [Setup]
 AppId={{8D4F67E2-91B5-4C84-A3F1-7B2C5819D4E0}
@@ -46,7 +46,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
 RestartApplications=no
 OutputDir=Publish\Installer
-OutputBaseFilename=ReaderHub_Setup_v3.62_x64
+OutputBaseFilename=ReaderHub_Setup_v3.65_x64
 
 [Languages]
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"

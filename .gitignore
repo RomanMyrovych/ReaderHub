@@ -16,8 +16,12 @@ cache/
 # Local user data and backups
 Backups/
 SampleLibrary/
+libofbooks/
 bookhub.db*
 bookhub.template.db
 settings.json
 reader_settings.json
 allreaderbook_settings.json
+
+# Autonomous AllReaderBook repository
+AllReaderBook/

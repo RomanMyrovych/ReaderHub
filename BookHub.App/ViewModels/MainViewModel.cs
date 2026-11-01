@@ -1,3 +1,4 @@
+using BookHub.App.Views;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -40,6 +41,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<VirtualShelfRecord> VirtualShelves { get; } = [];
     public ObservableCollection<VirtualShelfRecord> AssignableShelves { get; } = [];
     public ObservableCollection<SmartCollectionRecord> SmartCollections { get; } = [];
+
+    // Strict 4-Level Library Hierarchy (Library -> Section -> Category -> Shelf)
+    public ObservableCollection<LibrarySection> SectionsHierarchy { get; } = [];
+    public ObservableCollection<LibrarySection> FilterSections { get; } = [];
+    public ObservableCollection<LibraryCategory> FilterCategories { get; } = [];
+    public ObservableCollection<LibraryShelf> FilterShelves { get; } = [];
+
+    [ObservableProperty] private LibrarySection? _selectedFilterSection;
+    [ObservableProperty] private LibraryCategory? _selectedFilterCategory;
+    [ObservableProperty] private LibraryShelf? _selectedFilterShelf;
+
+    public ObservableCollection<LibrarySection> AssignableSections { get; } = [];
+    public ObservableCollection<LibraryCategory> AssignableCategories { get; } = [];
+    public ObservableCollection<LibraryShelf> AssignableShelvesNew { get; } = [];
+
+    [ObservableProperty] private LibrarySection? _selectedBookSection;
+    [ObservableProperty] private LibraryCategory? _selectedBookCategory;
+    [ObservableProperty] private LibraryShelf? _selectedBookShelfNew;
+    private bool _isUpdatingBookHierarchy;
+
+    // Management Mode & Batch Selection
+    [ObservableProperty] private bool _isManagementMode;
+    [ObservableProperty] private int _selectedForEditCount;
+    public bool HasSelectedForEdit => SelectedForEditCount > 0;
+    [ObservableProperty] private double _managementZoomScale = 1.0;
+    public string ManagementZoomPercent => $"{(int)Math.Round(ManagementZoomScale * 100)}%";
+
+    // Multi-Criteria Advanced Search Filters
+    [ObservableProperty] private string _advSearchTitle = string.Empty;
+    [ObservableProperty] private string _advSearchAuthor = string.Empty;
+    [ObservableProperty] private string _advSearchFormat = "ALL";
+    [ObservableProperty] private string _advSearchTag = string.Empty;
+    public string[] AllAdvFormatOptions { get; } = ["ALL", "PDF", "EPUB", "FB2", "MOBI", "DOCX", "CBZ", "DJVU"];
+
+    public string[] AdvPageOperators { get; } = ["Всі", ">", "<=", ">="];
+    [ObservableProperty] private string _advPageOp = "Всі";
+    [ObservableProperty] private int? _advPageValue;
+
+    public string[] AdvSizeOperators { get; } = ["Всі", ">", "<="];
+    [ObservableProperty] private string _advSizeOp = "Всі";
+    [ObservableProperty] private double? _advSizeMbValue;
     public ObservableCollection<RelatedItemRecord> SelectedBookRelatedItems { get; } = [];
 
     public IReadOnlyList<string> ThemeNames { get; } = ThemeManagerService.Presets.Select(p => p.Name).ToList();
@@ -138,6 +180,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         await _database.InitializeAsync();
 
         await ReloadShelvesAndSmartCollectionsAsync();
+        await ReloadHierarchyAsync();
         await ReloadLibraryFromDatabaseAsync();
         await _scanner.RefreshWatchersAsync();
 
@@ -271,6 +314,47 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             _isUpdatingSelectedBookShelf = false;
         }
+
+        _isUpdatingBookHierarchy = true;
+        try
+        {
+            if (value?.SectionId.HasValue == true && value.SectionId.Value > 0)
+            {
+                SelectedBookSection = AssignableSections.FirstOrDefault(s => s.Id == value.SectionId.Value);
+                RebuildAssignableCategories(SelectedBookSection);
+                if (value?.CategoryId.HasValue == true && value.CategoryId.Value > 0)
+                {
+                    SelectedBookCategory = AssignableCategories.FirstOrDefault(c => c.Id == value.CategoryId.Value);
+                    RebuildAssignableShelves(SelectedBookCategory);
+                    if (value?.ShelfId.HasValue == true && value.ShelfId.Value > 0)
+                    {
+                        SelectedBookShelfNew = AssignableShelvesNew.FirstOrDefault(sh => sh.Id == value.ShelfId.Value);
+                    }
+                    else
+                    {
+                        SelectedBookShelfNew = null;
+                    }
+                }
+                else
+                {
+                    SelectedBookCategory = null;
+                    AssignableShelvesNew.Clear();
+                    SelectedBookShelfNew = null;
+                }
+            }
+            else
+            {
+                SelectedBookSection = null;
+                AssignableCategories.Clear();
+                SelectedBookCategory = null;
+                AssignableShelvesNew.Clear();
+                SelectedBookShelfNew = null;
+            }
+        }
+        finally
+        {
+            _isUpdatingBookHierarchy = false;
+        }
     }
 
     partial void OnSelectedBookShelfChanged(VirtualShelfRecord? value)
@@ -361,6 +445,114 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _settingsService.Current.SelectedTag = value;
         _settingsService.Save();
         if (!_suppressAutoFilter) _ = ApplyFilterAsync();
+    }
+
+    partial void OnIsManagementModeChanged(bool value)
+    {
+        if (value)
+        {
+            ManagementZoomScale = _settingsService.Current.ManagementZoomScale >= 0.5
+                ? _settingsService.Current.ManagementZoomScale
+                : 1.0;
+            OnPropertyChanged(nameof(ManagementZoomPercent));
+        }
+        else
+        {
+            DeselectAllBooks();
+            ManagementZoomScale = 1.0;
+            OnPropertyChanged(nameof(ManagementZoomPercent));
+        }
+        _ = ApplyFilterAsync();
+    }
+
+    partial void OnSelectedForEditCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasSelectedForEdit));
+    }
+
+    partial void OnAdvSearchTitleChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvSearchAuthorChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvSearchFormatChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvSearchTagChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvPageOpChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvPageValueChanged(int? value) => _ = ApplyFilterAsync();
+    partial void OnAdvSizeOpChanged(string value) => _ = ApplyFilterAsync();
+    partial void OnAdvSizeMbValueChanged(double? value) => _ = ApplyFilterAsync();
+
+    partial void OnSelectedFilterSectionChanged(LibrarySection? value)
+    {
+        if (_suppressSidebarFilterSelectionChanges) return;
+        RebuildFilterCategories();
+        SelectedFilterCategory = null;
+        FilterShelves.Clear();
+        SelectedFilterShelf = null;
+        _ = ApplyFilterAsync();
+    }
+
+    partial void OnSelectedFilterCategoryChanged(LibraryCategory? value)
+    {
+        if (_suppressSidebarFilterSelectionChanges) return;
+        RebuildFilterShelves();
+        SelectedFilterShelf = null;
+        _ = ApplyFilterAsync();
+    }
+
+    partial void OnSelectedFilterShelfChanged(LibraryShelf? value)
+    {
+        if (_suppressSidebarFilterSelectionChanges) return;
+        _ = ApplyFilterAsync();
+    }
+
+    partial void OnSelectedBookSectionChanged(LibrarySection? value)
+    {
+        if (_isUpdatingBookHierarchy || SelectedBook == null) return;
+        _isUpdatingBookHierarchy = true;
+        try
+        {
+            RebuildAssignableCategories(value);
+            SelectedBookCategory = null;
+            AssignableShelvesNew.Clear();
+            SelectedBookShelfNew = null;
+            SelectedBook.SectionId = value?.Id;
+            SelectedBook.SectionName = value?.Name;
+            SelectedBook.CategoryId = null;
+            SelectedBook.CategoryName = null;
+            SelectedBook.ShelfId = null;
+            SelectedBook.ShelfName = null;
+        }
+        finally
+        {
+            _isUpdatingBookHierarchy = false;
+        }
+        _ = _database.AssignBookHierarchyAsync(SelectedBook.Id, SelectedBook.SectionId, null, null);
+    }
+
+    partial void OnSelectedBookCategoryChanged(LibraryCategory? value)
+    {
+        if (_isUpdatingBookHierarchy || SelectedBook == null) return;
+        _isUpdatingBookHierarchy = true;
+        try
+        {
+            RebuildAssignableShelves(value);
+            SelectedBookShelfNew = null;
+            SelectedBook.CategoryId = value?.Id;
+            SelectedBook.CategoryName = value?.Name;
+            SelectedBook.ShelfId = null;
+            SelectedBook.ShelfName = null;
+        }
+        finally
+        {
+            _isUpdatingBookHierarchy = false;
+        }
+        _ = _database.AssignBookHierarchyAsync(SelectedBook.Id, SelectedBook.SectionId, SelectedBook.CategoryId, null);
+    }
+
+    partial void OnSelectedBookShelfNewChanged(LibraryShelf? value)
+    {
+        if (_isUpdatingBookHierarchy || SelectedBook == null) return;
+        SelectedBook.ShelfId = value?.Id;
+        SelectedBook.ShelfName = value?.Name;
+        _ = _database.AssignBookHierarchyAsync(SelectedBook.Id, SelectedBook.SectionId, SelectedBook.CategoryId, SelectedBook.ShelfId);
     }
 
     partial void OnSelectedSortOrderChanged(string value)
@@ -543,6 +735,78 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             query = query.Where(b => !string.IsNullOrWhiteSpace(b.Tags) &&
                                      b.Tags.Contains(SelectedTag, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // 5b. Strict 4-Level Hierarchy Filter (Library -> Section -> Category -> Shelf)
+        if (SelectedFilterShelf != null && SelectedFilterShelf.Id > 0)
+        {
+            query = query.Where(b => b.ShelfId == SelectedFilterShelf.Id);
+        }
+        else if (SelectedFilterCategory != null && SelectedFilterCategory.Id > 0)
+        {
+            query = query.Where(b => b.CategoryId == SelectedFilterCategory.Id);
+        }
+        else if (SelectedFilterSection != null && SelectedFilterSection.Id > 0)
+        {
+            query = query.Where(b => b.SectionId == SelectedFilterSection.Id);
+        }
+
+        // 5c. Multi-Criteria Advanced Filters (Management Mode)
+        if (IsManagementMode)
+        {
+            if (!string.IsNullOrWhiteSpace(AdvSearchTitle))
+            {
+                string titleTrim = AdvSearchTitle.Trim();
+                query = query.Where(b => b.Title.Contains(titleTrim, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(AdvSearchAuthor))
+            {
+                string authTrim = AdvSearchAuthor.Trim();
+                query = query.Where(b => b.Author.Contains(authTrim, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(AdvSearchFormat) && !AdvSearchFormat.Equals("ALL", StringComparison.OrdinalIgnoreCase))
+            {
+                string extTarget = "." + AdvSearchFormat.ToLowerInvariant().TrimStart('.');
+                query = query.Where(b => b.Extension.Equals(extTarget, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(AdvSearchTag))
+            {
+                string tagTrim = AdvSearchTag.Trim();
+                query = query.Where(b => !string.IsNullOrWhiteSpace(b.Tags) && b.Tags.Contains(tagTrim, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (AdvPageValue.HasValue && AdvPageValue.Value > 0)
+            {
+                int val = AdvPageValue.Value;
+                if (AdvPageOp == ">")
+                {
+                    query = query.Where(b => b.PageCount > val);
+                }
+                else if (AdvPageOp == "<=")
+                {
+                    query = query.Where(b => b.PageCount <= val);
+                }
+                else if (AdvPageOp == ">=")
+                {
+                    query = query.Where(b => b.PageCount >= val);
+                }
+            }
+
+            if (AdvSizeMbValue.HasValue && AdvSizeMbValue.Value > 0)
+            {
+                long bytesThreshold = (long)(AdvSizeMbValue.Value * 1024 * 1024);
+                if (AdvSizeOp == ">")
+                {
+                    query = query.Where(b => b.FileSize > bytesThreshold);
+                }
+                else if (AdvSizeOp == "<=")
+                {
+                    query = query.Where(b => b.FileSize <= bytesThreshold);
+                }
+            }
         }
 
         // 6. Search Query (Disabled if empty or contains placeholder text)
@@ -944,6 +1208,333 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 StatusMessage = $"Сканування та FTS5 [{info.ProcessedCount}/{info.TotalDiscovered}]: {info.CurrentFile}";
             }
         });
+    }
+
+    public async Task ReloadHierarchyAsync()
+    {
+        var hierarchy = await _database.GetSectionsHierarchyAsync();
+        SectionsHierarchy.Clear();
+        foreach (var s in hierarchy) SectionsHierarchy.Add(s);
+
+        FilterSections.Clear();
+        FilterSections.Add(new LibrarySection { Id = 0, Name = "— Усі розділи —", Icon = "📚" });
+        foreach (var s in hierarchy) FilterSections.Add(s);
+
+        AssignableSections.Clear();
+        foreach (var s in hierarchy) AssignableSections.Add(s);
+
+        RebuildFilterCategories();
+        RebuildFilterShelves();
+    }
+
+    private void RebuildFilterCategories()
+    {
+        FilterCategories.Clear();
+        FilterCategories.Add(new LibraryCategory { Id = 0, Name = "— Усі категорії —" });
+        if (SelectedFilterSection != null && SelectedFilterSection.Id > 0)
+        {
+            var sec = SectionsHierarchy.FirstOrDefault(s => s.Id == SelectedFilterSection.Id);
+            if (sec != null)
+            {
+                foreach (var c in sec.Categories) FilterCategories.Add(c);
+            }
+        }
+    }
+
+    private void RebuildFilterShelves()
+    {
+        FilterShelves.Clear();
+        FilterShelves.Add(new LibraryShelf { Id = 0, Name = "— Усі полиці —" });
+        if (SelectedFilterCategory != null && SelectedFilterCategory.Id > 0)
+        {
+            foreach (var sec in SectionsHierarchy)
+            {
+                var cat = sec.Categories.FirstOrDefault(c => c.Id == SelectedFilterCategory.Id);
+                if (cat != null)
+                {
+                    foreach (var sh in cat.Shelves) FilterShelves.Add(sh);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void RebuildAssignableCategories(LibrarySection? section)
+    {
+        AssignableCategories.Clear();
+        if (section == null || section.Id <= 0) return;
+        var found = SectionsHierarchy.FirstOrDefault(s => s.Id == section.Id);
+        if (found != null)
+        {
+            foreach (var c in found.Categories) AssignableCategories.Add(c);
+        }
+    }
+
+    private void RebuildAssignableShelves(LibraryCategory? category)
+    {
+        AssignableShelvesNew.Clear();
+        if (category == null || category.Id <= 0) return;
+        foreach (var sec in SectionsHierarchy)
+        {
+            var found = sec.Categories.FirstOrDefault(c => c.Id == category.Id);
+            if (found != null)
+            {
+                foreach (var sh in found.Shelves) AssignableShelvesNew.Add(sh);
+                break;
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearBookHierarchyAsync()
+    {
+        if (SelectedBook == null) return;
+        _isUpdatingBookHierarchy = true;
+        try
+        {
+            SelectedBookSection = null;
+            AssignableCategories.Clear();
+            SelectedBookCategory = null;
+            AssignableShelvesNew.Clear();
+            SelectedBookShelfNew = null;
+            SelectedBook.SectionId = null;
+            SelectedBook.SectionName = null;
+            SelectedBook.CategoryId = null;
+            SelectedBook.CategoryName = null;
+            SelectedBook.ShelfId = null;
+            SelectedBook.ShelfName = null;
+        }
+        finally
+        {
+            _isUpdatingBookHierarchy = false;
+        }
+        await _database.AssignBookHierarchyAsync(SelectedBook.Id, null, null, null);
+    }
+
+    [RelayCommand]
+    private async Task ResetHierarchyFilterAsync()
+    {
+        _suppressSidebarFilterSelectionChanges = true;
+        try
+        {
+            SelectedFilterSection = null;
+            FilterCategories.Clear();
+            SelectedFilterCategory = null;
+            FilterShelves.Clear();
+            SelectedFilterShelf = null;
+        }
+        finally
+        {
+            _suppressSidebarFilterSelectionChanges = false;
+        }
+        await ApplyFilterAsync();
+    }
+
+    [RelayCommand]
+    private void SelectAllFoundBooks()
+    {
+        foreach (var b in FilteredBooks)
+        {
+            b.IsSelectedForEdit = true;
+        }
+        SelectedForEditCount = _allBooks.Count(b => b.IsSelectedForEdit);
+    }
+
+    [RelayCommand]
+    private void DeselectAllBooks()
+    {
+        foreach (var b in _allBooks)
+        {
+            b.IsSelectedForEdit = false;
+        }
+        SelectedForEditCount = 0;
+    }
+
+    [RelayCommand]
+    private void ExitManagementMode()
+    {
+        IsManagementMode = false;
+    }
+
+    [RelayCommand]
+    private void IncreaseManagementZoom()
+    {
+        ManagementZoomScale = Math.Min(1.6, Math.Round(ManagementZoomScale + 0.1, 2));
+        OnPropertyChanged(nameof(ManagementZoomPercent));
+        _settingsService.Current.ManagementZoomScale = ManagementZoomScale;
+        _settingsService.Save();
+    }
+
+    [RelayCommand]
+    private void DecreaseManagementZoom()
+    {
+        ManagementZoomScale = Math.Max(0.6, Math.Round(ManagementZoomScale - 0.1, 2));
+        OnPropertyChanged(nameof(ManagementZoomPercent));
+        _settingsService.Current.ManagementZoomScale = ManagementZoomScale;
+        _settingsService.Save();
+    }
+
+    [RelayCommand]
+    private void ResetManagementZoom()
+    {
+        ManagementZoomScale = 1.0;
+        OnPropertyChanged(nameof(ManagementZoomPercent));
+        _settingsService.Current.ManagementZoomScale = 1.0;
+        _settingsService.Save();
+    }
+
+    [RelayCommand]
+    private void ResetAdvFilters()
+    {
+        AdvSearchTitle = string.Empty;
+        AdvSearchAuthor = string.Empty;
+        AdvSearchFormat = "ALL";
+        AdvSearchTag = string.Empty;
+        AdvPageOp = "Всі";
+        AdvPageValue = null;
+        AdvSizeOp = "Всі";
+        AdvSizeMbValue = null;
+        _ = ApplyFilterAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteSelectedBooksAsync()
+    {
+        var selected = _allBooks.Where(b => b.IsSelectedForEdit).ToList();
+        if (selected.Count == 0)
+        {
+            MessageBox.Show("Оберіть книги за допомогою чекбоксів для видалення.", "Видалення книг", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"Видалити {selected.Count} обраних книг з бібліотеки?\n\n• Натисніть [Так], щоб видалити лише з каталогу бібліотеки (файли на диску залишаться).\n• Натисніть [Ні], щоб також перемістити файли книг у Кошик Windows (Recycle Bin).\n• Натисніть [Скасувати] для відміни.",
+            "Підтвердження видалення книг",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Cancel)
+            return;
+
+        bool deleteFiles = (result == MessageBoxResult.No);
+        var ids = selected.Select(b => b.Id).ToList();
+
+        await _database.DeleteBooksBatchAsync(ids, deleteFiles);
+        foreach (var b in selected)
+        {
+            _allBooks.Remove(b);
+        }
+        TotalBooksCount = _allBooks.Count;
+        SelectedForEditCount = _allBooks.Count(b => b.IsSelectedForEdit);
+        await ApplyFilterAsync();
+        StatusMessage = deleteFiles
+            ? $"Видалено {ids.Count} книг з каталогу та переміщено у кошик Windows."
+            : $"Видалено {ids.Count} книг з каталогу бібліотеки.";
+    }
+
+    [RelayCommand]
+    private async Task AddSectionAsync()
+    {
+        string? name = PromptDialogWindow.Show(null, "Створення нового розділу", "Введіть назву нового розділу бібліотеки:");
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            await _database.AddSectionAsync(name, "");
+            await ReloadHierarchyAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddCategoryAsync(LibrarySection? section)
+    {
+        var sec = section ?? (SelectedFilterSection?.Id > 0 ? SelectedFilterSection : SectionsHierarchy.FirstOrDefault());
+        if (sec == null)
+        {
+            MessageBox.Show("Спочатку створіть або оберіть розділ для додавання категорії.", "Створення категорії", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        string? name = PromptDialogWindow.Show(null, "Створення категорії", $"Введіть назву категорії для розділу «{sec.Name}»:");
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            await _database.AddCategoryAsync(sec.Id, name, "");
+            await ReloadHierarchyAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddShelfAsync(LibraryCategory? category)
+    {
+        var cat = category ?? (SelectedFilterCategory?.Id > 0 ? SelectedFilterCategory : null);
+        if (cat == null)
+        {
+            MessageBox.Show("Спочатку створіть або оберіть категорію для додавання полиці.", "Створення полиці", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        string? name = PromptDialogWindow.Show(null, "Створення полиці", $"Введіть назву нової полиці для категорії «{cat.Name}»:");
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            await _database.AddShelfAsync(cat.Id, name, "");
+            await ReloadHierarchyAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteSectionAsync(LibrarySection? section)
+    {
+        var sec = section ?? (SelectedFilterSection?.Id > 0 ? SelectedFilterSection : null);
+        if (sec == null) return;
+
+        var res = MessageBox.Show(
+            $"Видалити розділ «{sec.Name}»?\n\nВсі вкладені категорії та полиці також буде видалено.\nКниги з цього розділу залишаться у бібліотеці як нерозподілені.",
+            "Видалення розділу",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (res == MessageBoxResult.Yes)
+        {
+            await _database.DeleteSectionAsync(sec.Id);
+            await ReloadHierarchyAsync();
+            await ReloadLibraryFromDatabaseAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteCategoryAsync(LibraryCategory? category)
+    {
+        var cat = category ?? (SelectedFilterCategory?.Id > 0 ? SelectedFilterCategory : null);
+        if (cat == null) return;
+
+        var res = MessageBox.Show(
+            $"Видалити категорію «{cat.Name}»?\n\nВсі полиці цієї категорії буде видалено.\nКниги залишаться у розділі як нерозподілені по категоріях.",
+            "Видалення категорії",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (res == MessageBoxResult.Yes)
+        {
+            await _database.DeleteCategoryAsync(cat.Id);
+            await ReloadHierarchyAsync();
+            await ReloadLibraryFromDatabaseAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteShelfAsync(LibraryShelf? shelf)
+    {
+        var sh = shelf ?? (SelectedFilterShelf?.Id > 0 ? SelectedFilterShelf : null);
+        if (sh == null) return;
+
+        var res = MessageBox.Show(
+            $"Видалити полицю «{sh.Name}»?\n\nКниги залишаться у категорії як нерозподілені по полицях.",
+            "Видалення полиці",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (res == MessageBoxResult.Yes)
+        {
+            await _database.DeleteShelfAsync(sh.Id);
+            await ReloadHierarchyAsync();
+            await ReloadLibraryFromDatabaseAsync();
+        }
     }
 
     public void Dispose()

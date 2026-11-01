@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookHub.Core", "BookHub.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookHub.App", "BookHub.App\BookHub.App.csproj", "{E9719B86-6673-411D-88BB-98E6FE6A6774}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AllReaderBook", "BookHub.Reader\AllReaderBook.csproj", "{A34D8F11-8B2C-4E90-9A15-3C6E9120B7D2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AllReaderBook", "AllReaderBook\AllReaderBook.csproj", "{A34D8F11-8B2C-4E90-9A15-3C6E9120B7D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

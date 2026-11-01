@@ -6,6 +6,7 @@
     <Application.Resources>
         <conv:CoverPathToBitmapConverter x:Key="CoverPathToBitmapConverter" />
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <conv:BoolToCursorConverter x:Key="BoolToCursorConverter" />
 
         <!-- Default Theme Palette (Obsidian Dark - dynamically updated via ThemeManagerService) -->

@@ -27,10 +27,10 @@
     <ApplicationIcon>Assets\AllReaderBook.ico</ApplicationIcon>
     <AssemblyTitle>ReaderHub — High-Speed Book Cataloger &amp; PDFium Reader</AssemblyTitle>
     <Product>ReaderHub</Product>
-    <Version>3.62.0</Version>
-    <AssemblyVersion>3.62.0.0</AssemblyVersion>
-    <FileVersion>3.62.0.0</FileVersion>
-    <InformationalVersion>3.62</InformationalVersion>
+    <Version>3.65.0</Version>
+    <AssemblyVersion>3.65.0.0</AssemblyVersion>
+    <FileVersion>3.65.0.0</FileVersion>
+    <InformationalVersion>3.65-beta</InformationalVersion>
     <PackageProjectUrl>https://github.com/RomanMyrovych/ReaderHub</PackageProjectUrl>
     <RepositoryUrl>https://github.com/RomanMyrovych/ReaderHub</RepositoryUrl>
   </PropertyGroup>

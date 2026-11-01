@@ -7,7 +7,7 @@
         xmlns:models="clr-namespace:BookHub.Core.Models;assembly=BookHub.Core"
         xmlns:catalogModels="clr-namespace:BookHub.Core.Models"
         mc:Ignorable="d"
-        Title="ReaderHub v3.62 — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
+        Title="ReaderHub v3.65-beta — Надшвидкий каталогізатор та потоковий рідер (PDFium / FTS5 / 10 Тем)"
         Icon="pack://application:,,,/Assets/AllReaderBook.ico"
         Width="1480" Height="900"
         WindowStartupLocation="Manual"
@@ -192,8 +192,15 @@
                                     Padding="12,5" />
                         </StackPanel>
 
-                        <!-- Right: Batch Edit, Duplicates, One-Click Backup, About -->
+                        <!-- Right: Management Mode Toggle, Batch Edit, Duplicates, One-Click Backup, About -->
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ToggleButton Style="{StaticResource ModernToggleButtonStyle}"
+                                          Content="🛠 Режим керування"
+                                          IsChecked="{Binding IsManagementMode}"
+                                          ToolTip="Увімкнути режим керування бібліотекою: розширені фільтри, масове виділення, видалення книг та редагування розділів/полиць"
+                                          Padding="11,5"
+                                          Margin="0,0,6,0" />
+
                             <Button Style="{StaticResource ModernButtonStyle}"
                                     Content="{DynamicResource Loc_BatchEdit}"
                                     Click="BatchEditButton_Click"
@@ -230,14 +237,14 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="LeftSidebarColumn" Width="280" MinWidth="210" MaxWidth="460" />
-                <ColumnDefinition Width="5" />
+                <ColumnDefinition x:Name="LeftSidebarSplitterCol" Width="5" />
                 <ColumnDefinition Width="*" MinWidth="400" />
-                <ColumnDefinition Width="5" />
+                <ColumnDefinition x:Name="RightInspectorSplitterCol" Width="5" />
                 <ColumnDefinition x:Name="RightInspectorColumn" Width="330" MinWidth="240" MaxWidth="520" />
             </Grid.ColumnDefinitions>
 
             <!-- Col 0: Left Filter Sidebar (Wrapped in ScrollViewer with HorizontalScrollBarVisibility="Disabled") -->
-            <Border Grid.Column="0"
+            <Border x:Name="LeftSidebarBorder" Grid.Column="0"
                     Background="{DynamicResource BgSecondaryBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="0,0,1,0">
@@ -334,13 +341,54 @@
                             <Button Grid.Column="1" Style="{StaticResource ModernButtonStyle}" Content="＋" Command="{Binding CreateShelfCommand}" Margin="6,0,0,0" Padding="10,4" />
                         </Grid>
 
-                        <!-- Category / Author / Tag ComboBoxes (Stretched cleanly without horizontal scrollbar clipping) -->
-                        <TextBlock Text="{DynamicResource Loc_CategoryFolder}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <ComboBox ItemsSource="{Binding Categories}"
-                                  SelectedItem="{Binding SelectedCategory}"
-                                  HorizontalAlignment="Stretch"
-                                  Margin="0,0,0,12"
-                                  Padding="6,5" />
+                        <!-- Strict 4-Level Library Hierarchy (Library -> Section -> Category -> Shelf) -->
+                        <Border Background="{DynamicResource BgCardBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10,8"
+                                Margin="0,0,0,12">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="📚 БІБЛІОТЕКА" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Content="Усі книги"
+                                            Command="{Binding ResetHierarchyFilterCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            FontSize="10.5"
+                                            Padding="6,2"
+                                            ToolTip="Показати всі книги бібліотеки без фільтра за ієрархією" />
+                                </Grid>
+
+                                <TextBlock Text="РОЗДІЛ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <ComboBox ItemsSource="{Binding FilterSections}"
+                                          SelectedItem="{Binding SelectedFilterSection}"
+                                          DisplayMemberPath="Name"
+                                          HorizontalAlignment="Stretch"
+                                          Margin="0,0,0,6"
+                                          Padding="6,4" />
+
+                                <TextBlock Text="КАТЕГОРІЯ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <ComboBox ItemsSource="{Binding FilterCategories}"
+                                          SelectedItem="{Binding SelectedFilterCategory}"
+                                          DisplayMemberPath="Name"
+                                          HorizontalAlignment="Stretch"
+                                          Margin="0,0,0,6"
+                                          Padding="6,4" />
+
+                                <TextBlock Text="ПОЛИЦЯ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <ComboBox ItemsSource="{Binding FilterShelves}"
+                                          SelectedItem="{Binding SelectedFilterShelf}"
+                                          DisplayMemberPath="Name"
+                                          HorizontalAlignment="Stretch"
+                                          Margin="0,0,0,2"
+                                          Padding="6,4" />
+                            </StackPanel>
+                        </Border>
 
                         <TextBlock Text="{DynamicResource Loc_Author}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <ComboBox ItemsSource="{Binding Authors}"
@@ -360,11 +408,331 @@
             </Border>
 
             <!-- Splitter 1 -->
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
+            <GridSplitter x:Name="LeftSidebarSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
 
             <!-- Col 2: Center Library View (Virtualized Cover Grid OR DataGrid Table) -->
             <Grid Grid.Column="2" Background="{DynamicResource BgPrimaryBrush}">
-                <!-- Mode A: Virtualized Cover Grid -->
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Management Mode & Multi-Criteria Advanced Search Panel -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource BgSecondaryBrush}"
+                        BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="0,0,0,1.5"
+                        Padding="16,12"
+                        Margin="0,0,0,6"
+                        Visibility="{Binding IsManagementMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <!-- Top Row: Batch Selection (Left) and Danger / Zoom / Close (Right) -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left: Batch Selection Tools & Selection Counter -->
+                            <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="☑ Виділити все знайдене"
+                                        Command="{Binding SelectAllFoundBooksCommand}"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        Padding="11,5"
+                                        Margin="0,0,8,4"
+                                        ToolTip="Позначити чекбокси для всіх книг у поточному списку" />
+
+                                <Button Content="☐ Зняти виділення"
+                                        Command="{Binding DeselectAllBooksCommand}"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        Padding="11,5"
+                                        Margin="0,0,12,4"
+                                        ToolTip="Зняти всі позначки чекбоксів" />
+
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8,4"
+                                        Margin="0,0,8,4"
+                                        VerticalAlignment="Center">
+                                    <TextBlock FontSize="12.5" Foreground="{DynamicResource TextSecondaryBrush}">
+                                        <Run Text="Позначено: " />
+                                        <Run Text="{Binding SelectedForEditCount, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                        <Run Text=" із " />
+                                        <Run Text="{Binding FilteredBooksCount, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </TextBlock>
+                                </Border>
+                            </WrapPanel>
+
+                            <!-- Right: Delete Button, Zoom Controls & Standard Close/Exit Button -->
+                            <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="🗑 Видалити позначені книги"
+                                        Command="{Binding DeleteSelectedBooksCommand}"
+                                        IsEnabled="{Binding HasSelectedForEdit}"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Background="#DC2626"
+                                        BorderBrush="#EF4444"
+                                        Foreground="#FFFFFF"
+                                        FontWeight="SemiBold"
+                                        Padding="12,5"
+                                        Margin="0,0,12,4"
+                                        ToolTip="Видалити позначені чекбоксами книги з бібліотеки (або перемістити у кошик)" />
+
+                                <!-- Zoom Controls in Management Mode -->
+                                <Border Background="{DynamicResource BgCardBrush}"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="5"
+                                        Padding="4,2"
+                                        Margin="0,0,12,4"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🔍" FontSize="11" VerticalAlignment="Center" Margin="4,0,4,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <Button Content="−"
+                                                Command="{Binding DecreaseManagementZoomCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Width="24" Height="24" Padding="0"
+                                                Margin="0,0,2,0"
+                                                ToolTip="Зменшити масштаб карток (Ctrl + коліщатко вниз)" />
+                                        <Button Content="{Binding ManagementZoomPercent}"
+                                                Command="{Binding ResetManagementZoomCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                MinWidth="44" Height="24" Padding="4,0"
+                                                FontSize="11"
+                                                Margin="0,0,2,0"
+                                                ToolTip="Скинути масштаб до 100%" />
+                                        <Button Content="+"
+                                                Command="{Binding IncreaseManagementZoomCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Width="24" Height="24" Padding="0"
+                                                ToolTip="Збільшити масштаб карток (Ctrl + коліщатко вгору)" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Standard Windows Close / Exit Button -->
+                                <Button Command="{Binding ExitManagementModeCommand}"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        Padding="11,5"
+                                        Margin="0,0,0,4"
+                                        ToolTip="Закрити режим керування та повернутися до стандартного перегляду бібліотеки (або клавіша Esc)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="✕" FontWeight="Bold" Foreground="#EF4444" Margin="0,0,6,0" />
+                                        <TextBlock Text="Закрити" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </Grid>
+
+                        <!-- Multi-Criteria Advanced Filters Bar -->
+                        <Border Background="{DynamicResource BgCardBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Row 0: 4 Search Fields with distinct Headers & Watermarks -->
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="1.5*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Field 1: Title -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock Text="📖 Назва книги / файлу:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="2,0,0,4" />
+                                        <Grid>
+                                            <TextBox x:Name="AdvSearchTitleBox"
+                                                     Text="{Binding AdvSearchTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Padding="8,5"
+                                                     ToolTip="Фільтр за назвою книги або ім'ям файлу" />
+                                            <TextBlock Text="Введіть назву для фільтрації..."
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Opacity="0.5"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       Margin="9,0,0,0"
+                                                       IsHitTestVisible="False">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Text, ElementName=AdvSearchTitleBox}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <!-- Field 2: Author -->
+                                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                        <TextBlock Text="✍ Автор:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="2,0,0,4" />
+                                        <Grid>
+                                            <TextBox x:Name="AdvSearchAuthorBox"
+                                                     Text="{Binding AdvSearchAuthor, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Padding="8,5"
+                                                     ToolTip="Фільтр за автором книги" />
+                                            <TextBlock Text="Ім'я або прізвище автора..."
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Opacity="0.5"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       Margin="9,0,0,0"
+                                                       IsHitTestVisible="False">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Text, ElementName=AdvSearchAuthorBox}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <!-- Field 3: Format -->
+                                    <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                                        <TextBlock Text="📄 Формат файлу:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="2,0,0,4" />
+                                        <ComboBox SelectedItem="{Binding AdvSearchFormat}"
+                                                  ItemsSource="{Binding AllAdvFormatOptions}"
+                                                  Padding="8,5"
+                                                  ToolTip="Фільтр за форматом файлу" />
+                                    </StackPanel>
+
+                                    <!-- Field 4: Tag / Genre -->
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="🏷 Тег або жанр:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="2,0,0,4" />
+                                        <Grid>
+                                            <TextBox x:Name="AdvSearchTagBox"
+                                                     Text="{Binding AdvSearchTag, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Padding="8,5"
+                                                     ToolTip="Фільтр за тегом або жанром книги" />
+                                            <TextBlock Text="Наприклад: проза, python..."
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       Opacity="0.5"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       Margin="9,0,0,0"
+                                                       IsHitTestVisible="False">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Text, ElementName=AdvSearchTagBox}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Row 1: Numerical filters (Pages, Size), Hierarchy tools, and Reset Filters -->
+                                <WrapPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Page count comparison -->
+                                    <Border Background="{DynamicResource BgSecondaryBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="8,4"
+                                            Margin="0,0,12,4">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="📄 Стор.:" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <ComboBox ItemsSource="{Binding AdvPageOperators}"
+                                                      SelectedItem="{Binding AdvPageOp}"
+                                                      Width="55"
+                                                      Padding="4,2"
+                                                      Margin="0,0,6,0" />
+                                            <TextBox Text="{Binding AdvPageValue, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Width="55"
+                                                     Padding="4,2"
+                                                     ToolTip="Кількість сторінок (напр. 10 або 3)" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- File size comparison (MB) -->
+                                    <Border Background="{DynamicResource BgSecondaryBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="8,4"
+                                            Margin="0,0,16,4">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="💾 Розмір:" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <ComboBox ItemsSource="{Binding AdvSizeOperators}"
+                                                      SelectedItem="{Binding AdvSizeOp}"
+                                                      Width="55"
+                                                      Padding="4,2"
+                                                      Margin="0,0,6,0" />
+                                            <TextBox Text="{Binding AdvSizeMbValue, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Width="50"
+                                                     Padding="4,2"
+                                                     ToolTip="Розмір файлу у МБ (напр. 5 або 3)" />
+                                            <TextBlock Text="МБ" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Reset Filters Button -->
+                                    <Button Content="🔄 Скинути фільтри"
+                                            Command="{Binding ResetAdvFiltersCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Padding="9,4"
+                                            Margin="0,0,16,4"
+                                            ToolTip="Очистити всі поля розширеного пошуку та скинути фільтри сторінок і розміру" />
+
+                                    <!-- Hierarchy Management Tools -->
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
+                                        <TextBlock Text="Ієрархія:" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Button Content="➕ Розділ"
+                                                Command="{Binding AddSectionCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Padding="8,4"
+                                                Margin="0,0,6,0"
+                                                ToolTip="Створити новий розділ бібліотеки" />
+                                        <Button Content="➕ Категорія"
+                                                Command="{Binding AddCategoryCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Padding="8,4"
+                                                Margin="0,0,6,0"
+                                                ToolTip="Створити нову категорію у поточному розділі" />
+                                        <Button Content="➕ Полиця"
+                                                Command="{Binding AddShelfCommand}"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Padding="8,4"
+                                                ToolTip="Створити нову полицю у поточній категорії" />
+                                    </StackPanel>
+                                </WrapPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Grid Row 1: Workspace Views -->
+                <Grid Grid.Row="1" PreviewMouseWheel="BooksWorkspace_PreviewMouseWheel">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform ScaleX="{Binding ManagementZoomScale}" ScaleY="{Binding ManagementZoomScale}" />
+                    </Grid.LayoutTransform>
+                    <!-- Mode A: Virtualized Cover Grid -->
                 <ListBox x:Name="BooksListBox"
                          ItemsSource="{Binding FilteredBooks}"
                          SelectedItem="{Binding SelectedBook}"
@@ -418,6 +786,15 @@
                                                         <Image Source="{Binding CoverPath, Converter={StaticResource CoverPathToBitmapConverter}}"
                                                                Stretch="UniformToFill"
                                                                RenderOptions.BitmapScalingMode="LowQuality" />
+
+                                                        <!-- CheckBox for Management Mode -->
+                                                        <CheckBox IsChecked="{Binding IsSelectedForEdit, Mode=TwoWay}"
+                                                                  HorizontalAlignment="Left"
+                                                                  VerticalAlignment="Top"
+                                                                  Margin="7"
+                                                                  Visibility="{Binding DataContext.IsManagementMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                  FocusVisualStyle="{x:Null}"
+                                                                  ToolTip="Позначити для видалення" />
 
                                                         <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#CC0F1117" BorderBrush="#4B5574" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="6">
                                                             <TextBlock Text="{Binding FormatBadge}" FontSize="10" FontWeight="Bold" Foreground="#60A5FA" />
@@ -487,6 +864,7 @@
                           AlternatingRowBackground="{DynamicResource BgSecondaryBrush}"
                           Foreground="{DynamicResource TextPrimaryBrush}"
                           BorderThickness="0"
+                          HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
                           HorizontalGridLinesBrush="{DynamicResource BorderSubtleBrush}"
                           EnableRowVirtualization="True"
@@ -526,7 +904,8 @@
                                                     </Grid.ColumnDefinitions>
                                                     <ContentPresenter Grid.Column="0"
                                                                       RecognizesAccessKey="True"
-                                                                      VerticalAlignment="Center" />
+                                                                      VerticalAlignment="Center"
+                                                                      TextElement.Foreground="{TemplateBinding Foreground}" />
                                                     <Path x:Name="SortArrow"
                                                           Grid.Column="1"
                                                           Margin="6,0,0,0"
@@ -566,7 +945,20 @@
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
                     <DataGrid.Columns>
+                        <DataGridTemplateColumn Width="45" Header="☑">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelectedForEdit, Mode=TwoWay}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Visibility="{Binding DataContext.IsManagementMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Формат" Binding="{Binding FormatBadge}" Width="75" />
+                        <DataGridTextColumn Header="Розділ" Binding="{Binding SectionName}" Width="110" />
+                        <DataGridTextColumn Header="Категорія" Binding="{Binding CategoryName}" Width="110" />
+                        <DataGridTextColumn Header="Полиця" Binding="{Binding ShelfName}" Width="110" />
                         <DataGridTextColumn Header="Назва книги" Binding="{Binding Title}" Width="2*" />
                         <DataGridTextColumn Header="Автор" Binding="{Binding Author}" Width="1.3*" />
                         <DataGridTextColumn Header="Серія" Binding="{Binding SeriesDisplay}" Width="130" />
@@ -577,13 +969,14 @@
                         <DataGridTextColumn Header="Розмір" Binding="{Binding FormattedSize}" Width="85" />
                     </DataGrid.Columns>
                 </DataGrid>
+                </Grid>
             </Grid>
 
             <!-- Splitter 2 -->
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
+            <GridSplitter x:Name="RightInspectorSplitter" Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderSubtleBrush}" ShowsPreview="False" />
 
             <!-- Col 4: Right Inspector Panel (Details, Metadata Editor, Shelves, Related Items) -->
-            <Border Grid.Column="4"
+            <Border x:Name="RightInspectorBorder" Grid.Column="4"
                     Background="{DynamicResource BgSecondaryBrush}"
                     BorderBrush="{DynamicResource BorderSubtleBrush}"
                     BorderThickness="1,0,0,0">
@@ -678,31 +1071,39 @@
                             </Button>
                         </UniformGrid>
 
-                        <!-- Assign to Virtual Shelf -->
-                        <TextBlock Text="{DynamicResource Loc_AddToShelf}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <Grid Margin="0,0,0,12">
-                            <ComboBox x:Name="AssignShelfCombo"
-                                      ItemsSource="{Binding DataContext.AssignableShelves, RelativeSource={RelativeSource AncestorType=Window}}"
-                                      SelectedItem="{Binding DataContext.SelectedBookShelf, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
-                                      DisplayMemberPath="Name" />
-                            <TextBlock Text="Оберіть поличку..."
-                                       FontSize="12"
-                                       Foreground="{DynamicResource TextMutedBrush}"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,0,0"
-                                       IsHitTestVisible="False">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedItem, ElementName=AssignShelfCombo}" Value="{x:Null}">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Grid>
+                        <!-- Assign to Hierarchy: Section -> Category -> Shelf -->
+                        <TextBlock Text="📁 СТРУКТУРА КАТАЛОГУ (РОЗДІЛ / КАТЕГОРІЯ / ПОЛИЦЯ)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,5" />
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="Розділ:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding DataContext.AssignableSections, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      SelectedItem="{Binding DataContext.SelectedBookSection, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                      DisplayMemberPath="Name"
+                                      Margin="0,0,0,6"
+                                      Padding="6,4" />
+
+                            <TextBlock Text="Категорія:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding DataContext.AssignableCategories, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      SelectedItem="{Binding DataContext.SelectedBookCategory, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                      DisplayMemberPath="Name"
+                                      IsEnabled="{Binding DataContext.SelectedBookSection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisibilityConverter}}"
+                                      Margin="0,0,0,6"
+                                      Padding="6,4" />
+
+                            <TextBlock Text="Полиця:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding DataContext.AssignableShelvesNew, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      SelectedItem="{Binding DataContext.SelectedBookShelfNew, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                                      DisplayMemberPath="Name"
+                                      IsEnabled="{Binding DataContext.SelectedBookCategory, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NullToVisibilityConverter}}"
+                                      Margin="0,0,0,6"
+                                      Padding="6,4" />
+
+                            <Button Content="✕ Очистити призначення"
+                                    Command="{Binding DataContext.ClearBookHierarchyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    Style="{StaticResource ModernButtonStyle}"
+                                    Padding="8,4"
+                                    FontSize="11"
+                                    HorizontalAlignment="Right" />
+                        </StackPanel>
 
                         <!-- Extended Info Card -->
                         <Border Background="{DynamicResource BgCardBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,12">

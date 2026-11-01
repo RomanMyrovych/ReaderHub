@@ -203,6 +203,36 @@ public class LibraryDatabase
                 IsBookmark INTEGER NOT NULL DEFAULT 0,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS LibrarySections (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL UNIQUE,
+                Icon TEXT NOT NULL DEFAULT '📁',
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS LibraryCategories (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SectionId INTEGER NOT NULL,
+                Name TEXT NOT NULL,
+                Icon TEXT NOT NULL DEFAULT '📂',
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL,
+                FOREIGN KEY(SectionId) REFERENCES LibrarySections(Id) ON DELETE CASCADE,
+                UNIQUE(SectionId, Name)
+            );
+
+            CREATE TABLE IF NOT EXISTS LibraryShelves (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                CategoryId INTEGER NOT NULL,
+                Name TEXT NOT NULL,
+                Icon TEXT NOT NULL DEFAULT '📖',
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL,
+                FOREIGN KEY(CategoryId) REFERENCES LibraryCategories(Id) ON DELETE CASCADE,
+                UNIQUE(CategoryId, Name)
+            );
             """;
 
         await conn.ExecuteAsync(sql);
@@ -219,6 +249,9 @@ public class LibraryDatabase
             "ALTER TABLE Books ADD COLUMN VolumeNumber INTEGER NULL;",
             "ALTER TABLE Books ADD COLUMN DetectedEncoding TEXT NULL DEFAULT 'UTF-8';",
             "ALTER TABLE Books ADD COLUMN IsFtsIndexed INTEGER NOT NULL DEFAULT 0;",
+            "ALTER TABLE Books ADD COLUMN SectionId INTEGER NULL;",
+            "ALTER TABLE Books ADD COLUMN CategoryId INTEGER NULL;",
+            "ALTER TABLE Books ADD COLUMN ShelfId INTEGER NULL;",
             "ALTER TABLE Annotations ADD COLUMN ScrollOffset REAL NOT NULL DEFAULT 0;"
         ];
 
@@ -245,6 +278,90 @@ public class LibraryDatabase
                 ('Важкі тех-книги PDF', NULL, '.pdf', NULL, 0, '📕'),
                 ('Активне читання (Читаю)', NULL, NULL, 1, 0, '📖');
                 """);
+        }
+
+        // Seed 4-Level Hierarchy (Sections -> Categories -> Shelves) if empty
+        var sectionCount = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM LibrarySections;");
+        if (sectionCount == 0)
+        {
+            string now = DateTime.Now.ToString("O");
+            long sTech = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Технічна література', '💻', 1, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cProg = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Програмування', '⚙️', 1, @Now); SELECT last_insert_rowid();", new { S = sTech, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Мова Go', '🐹', 1, @Now),
+                (@C, 'C# & .NET 9', '🟣', 2, @Now),
+                (@C, 'Python & Data Science', '🐍', 3, @Now),
+                (@C, 'TypeScript / Frontend', '🌐', 4, @Now),
+                (@C, 'Rust / Системне програмування', '🦀', 5, @Now);", new { C = cProg, Now = now });
+
+            long cDb = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Бази даних & Сховища', '🗄️', 2, @Now); SELECT last_insert_rowid();", new { S = sTech, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'SQLite & FTS5', '🔍', 1, @Now),
+                (@C, 'PostgreSQL / Реляційні БД', '🐘', 2, @Now),
+                (@C, 'NoSQL & Розподілені системи', '⚡', 3, @Now);", new { C = cDb, Now = now });
+
+            long cArch = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Архітектура систем & DevOps', '🏛️', 3, @Now); SELECT last_insert_rowid();", new { S = sTech, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Мікросервіси та Патерни', '🧩', 1, @Now),
+                (@C, 'Docker & Kubernetes', '🐳', 2, @Now),
+                (@C, 'Кібербезпека & Мережі', '🛡️', 3, @Now);", new { C = cArch, Now = now });
+
+            long sFiction = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Художня література', '🎨', 2, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cProse = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Проза', '📖', 1, @Now); SELECT last_insert_rowid();", new { S = sFiction, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Класична проза', '📜', 1, @Now),
+                (@C, 'Сучасна література', '☕', 2, @Now);", new { C = cProse, Now = now });
+
+            long cSciFi = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Фантастика & Фентезі', '🚀', 2, @Now); SELECT last_insert_rowid();", new { S = sFiction, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Наукова фантастика (Sci-Fi)', '🌌', 1, @Now),
+                (@C, 'Героїчне фентезі & Казки', '🐉', 2, @Now),
+                (@C, 'Кіберпанк & Антиутопії', '🤖', 3, @Now);", new { C = cSciFi, Now = now });
+
+            long cPoetry = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Поезія & Драматургія', '✒️', 3, @Now); SELECT last_insert_rowid();", new { S = sFiction, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Збірки віршів', '📜', 1, @Now),
+                (@C, 'П''єси та сценарії', '🎭', 2, @Now);", new { C = cPoetry, Now = now });
+
+            long sEdu = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Навчальна література', '🎓', 3, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cTextbooks = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Підручники & Посібники', '📚', 1, @Now); SELECT last_insert_rowid();", new { S = sEdu, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Університетські курси', '🏫', 1, @Now),
+                (@C, 'Шкільна програма', '🎒', 2, @Now);", new { C = cTextbooks, Now = now });
+
+            long cManuals = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Довідники & Шпаргалки', '📋', 2, @Now); SELECT last_insert_rowid();", new { S = sEdu, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Cheat Sheets & Шпаргалки', '💡', 1, @Now),
+                (@C, 'Енциклопедії & Словники', '📖', 2, @Now);", new { C = cManuals, Now = now });
+
+            long sScience = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Наукова література', '🔬', 4, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cExactSci = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Природничі & Точні науки', '📐', 1, @Now); SELECT last_insert_rowid();", new { S = sScience, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Математика & Алгоритми', '🔢', 1, @Now),
+                (@C, 'Фізика & Астрономія', '🔭', 2, @Now);", new { C = cExactSci, Now = now });
+
+            long sBiz = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Бізнес та саморозвиток', '📈', 5, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cMgmt = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Менеджмент & Продуктивність', '💼', 1, @Now); SELECT last_insert_rowid();", new { S = sBiz, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Управління проектами (Agile/Scrum)', '🎯', 1, @Now),
+                (@C, 'Особиста ефективність', '⏳', 2, @Now);", new { C = cMgmt, Now = now });
+
+            long sDocs = await conn.ExecuteScalarAsync<long>("INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt) VALUES ('Документи та конспекти', '📝', 6, @Now); SELECT last_insert_rowid();", new { Now = now });
+            long cNotes = await conn.ExecuteScalarAsync<long>("INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt) VALUES (@S, 'Робочі нотатки', '🗂️', 1, @Now); SELECT last_insert_rowid();", new { S = sDocs, Now = now });
+            await conn.ExecuteAsync(@"
+                INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt) VALUES
+                (@C, 'Конспекти Obsidian Markdown', '🔮', 1, @Now),
+                (@C, 'Специфікації & Техдокументація', '📑', 2, @Now);", new { C = cNotes, Now = now });
         }
     }
 
@@ -693,6 +810,26 @@ public class LibraryDatabase
         await conn.ExecuteAsync("DELETE FROM Annotations WHERE Id = @Id;", new { Id = id });
     }
 
+    public async Task UpdateAnnotationAsync(AnnotationRecord ann)
+    {
+        await using var conn = CreateConnection();
+        await conn.ExecuteAsync("""
+            UPDATE Annotations
+            SET QuoteText = @QuoteText,
+                CommentText = @CommentText,
+                HighlightColor = @HighlightColor,
+                ScrollOffset = @ScrollOffset
+            WHERE Id = @Id;
+            """, new
+        {
+            ann.QuoteText,
+            ann.CommentText,
+            ann.HighlightColor,
+            ann.ScrollOffset,
+            ann.Id
+        });
+    }
+
     // Duplicate Detection & Merging
     public async Task<List<DuplicateGroup>> FindDuplicatesAsync()
     {
@@ -782,10 +919,14 @@ public class LibraryDatabase
     {
         await using var conn = CreateConnection();
         var rows = await conn.QueryAsync<BookRecord>("""
-            SELECT b.*, bs.ShelfId AS VirtualShelfId, s.Name AS VirtualShelfName
+            SELECT b.*, bs.ShelfId AS VirtualShelfId, s.Name AS VirtualShelfName,
+                   sec.Name AS SectionName, cat.Name AS CategoryName, sh.Name AS ShelfName
             FROM Books b
             LEFT JOIN BookShelves bs ON bs.BookId = b.Id
             LEFT JOIN VirtualShelves s ON s.Id = bs.ShelfId
+            LEFT JOIN LibrarySections sec ON sec.Id = b.SectionId
+            LEFT JOIN LibraryCategories cat ON cat.Id = b.CategoryId
+            LEFT JOIN LibraryShelves sh ON sh.Id = b.ShelfId
             ORDER BY COALESCE(b.LastOpenedAt, b.AddedAt) DESC, b.Title ASC;
             """);
         return rows.ToList();
@@ -878,5 +1019,188 @@ public class LibraryDatabase
         await using var conn = CreateConnection();
         await conn.ExecuteAsync("DELETE FROM Books WHERE Id = @Id;", new { Id = bookId });
         await conn.ExecuteAsync("DELETE FROM BooksFts WHERE BookId = @BookId;", new { BookId = bookId.ToString() });
+    }
+
+    public async Task<List<LibrarySection>> GetSectionsHierarchyAsync()
+    {
+        await using var conn = CreateConnection();
+        var sections = (await conn.QueryAsync<LibrarySection>(
+            "SELECT * FROM LibrarySections ORDER BY SortOrder ASC, Name ASC;")).ToList();
+
+        var categories = (await conn.QueryAsync<LibraryCategory>(
+            "SELECT * FROM LibraryCategories ORDER BY SortOrder ASC, Name ASC;")).ToList();
+
+        var shelves = (await conn.QueryAsync<LibraryShelf>(
+            "SELECT * FROM LibraryShelves ORDER BY SortOrder ASC, Name ASC;")).ToList();
+
+        var sectionCounts = (await conn.QueryAsync<(long SectionId, int Count)>(
+            "SELECT SectionId, COUNT(1) AS Count FROM Books WHERE SectionId IS NOT NULL GROUP BY SectionId;"))
+            .ToDictionary(x => x.SectionId, x => x.Count);
+
+        var categoryCounts = (await conn.QueryAsync<(long CategoryId, int Count)>(
+            "SELECT CategoryId, COUNT(1) AS Count FROM Books WHERE CategoryId IS NOT NULL GROUP BY CategoryId;"))
+            .ToDictionary(x => x.CategoryId, x => x.Count);
+
+        var shelfCounts = (await conn.QueryAsync<(long ShelfId, int Count)>(
+            "SELECT ShelfId, COUNT(1) AS Count FROM Books WHERE ShelfId IS NOT NULL GROUP BY ShelfId;"))
+            .ToDictionary(x => x.ShelfId, x => x.Count);
+
+        var shelvesByCat = shelves.GroupBy(s => s.CategoryId).ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var sh in shelves)
+        {
+            if (shelfCounts.TryGetValue(sh.Id, out int cnt)) sh.BookCount = cnt;
+        }
+
+        var catsBySec = categories.GroupBy(c => c.SectionId).ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var cat in categories)
+        {
+            if (categoryCounts.TryGetValue(cat.Id, out int cnt)) cat.BookCount = cnt;
+            if (shelvesByCat.TryGetValue(cat.Id, out var shList)) cat.Shelves = shList;
+        }
+
+        foreach (var sec in sections)
+        {
+            if (sectionCounts.TryGetValue(sec.Id, out int cnt)) sec.BookCount = cnt;
+            if (catsBySec.TryGetValue(sec.Id, out var catList)) sec.Categories = catList;
+        }
+
+        return sections;
+    }
+
+    public async Task<long> AddSectionAsync(string name, string icon = "📁")
+    {
+        await using var conn = CreateConnection();
+        return await conn.ExecuteScalarAsync<long>("""
+            INSERT INTO LibrarySections (Name, Icon, SortOrder, CreatedAt)
+            VALUES (@Name, @Icon, (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM LibrarySections), @Now);
+            SELECT last_insert_rowid();
+            """, new { Name = name.Trim(), Icon = icon, Now = DateTime.Now.ToString("O") });
+    }
+
+    public async Task UpdateSectionAsync(long id, string name, string icon)
+    {
+        await using var conn = CreateConnection();
+        await conn.ExecuteAsync("UPDATE LibrarySections SET Name = @Name, Icon = @Icon WHERE Id = @Id;",
+            new { Id = id, Name = name.Trim(), Icon = icon });
+    }
+
+    public async Task DeleteSectionAsync(long id)
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        // User rule: books from deleted section fall back to root library as unallocated
+        await conn.ExecuteAsync("UPDATE Books SET SectionId = NULL, CategoryId = NULL, ShelfId = NULL WHERE SectionId = @Id;", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibraryShelves WHERE CategoryId IN (SELECT Id FROM LibraryCategories WHERE SectionId = @Id);", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibraryCategories WHERE SectionId = @Id;", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibrarySections WHERE Id = @Id;", new { Id = id }, tx);
+        await tx.CommitAsync();
+    }
+
+    public async Task<long> AddCategoryAsync(long sectionId, string name, string icon = "📂")
+    {
+        await using var conn = CreateConnection();
+        return await conn.ExecuteScalarAsync<long>("""
+            INSERT INTO LibraryCategories (SectionId, Name, Icon, SortOrder, CreatedAt)
+            VALUES (@SectionId, @Name, @Icon, (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM LibraryCategories WHERE SectionId = @SectionId), @Now);
+            SELECT last_insert_rowid();
+            """, new { SectionId = sectionId, Name = name.Trim(), Icon = icon, Now = DateTime.Now.ToString("O") });
+    }
+
+    public async Task UpdateCategoryAsync(long id, string name, string icon)
+    {
+        await using var conn = CreateConnection();
+        await conn.ExecuteAsync("UPDATE LibraryCategories SET Name = @Name, Icon = @Icon WHERE Id = @Id;",
+            new { Id = id, Name = name.Trim(), Icon = icon });
+    }
+
+    public async Task DeleteCategoryAsync(long id)
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        // User rule: books from deleted category fall back to section as unallocated to categories
+        await conn.ExecuteAsync("UPDATE Books SET CategoryId = NULL, ShelfId = NULL WHERE CategoryId = @Id;", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibraryShelves WHERE CategoryId = @Id;", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibraryCategories WHERE Id = @Id;", new { Id = id }, tx);
+        await tx.CommitAsync();
+    }
+
+    public async Task<long> AddShelfAsync(long categoryId, string name, string icon = "📖")
+    {
+        await using var conn = CreateConnection();
+        return await conn.ExecuteScalarAsync<long>("""
+            INSERT INTO LibraryShelves (CategoryId, Name, Icon, SortOrder, CreatedAt)
+            VALUES (@CategoryId, @Name, @Icon, (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM LibraryShelves WHERE CategoryId = @CategoryId), @Now);
+            SELECT last_insert_rowid();
+            """, new { CategoryId = categoryId, Name = name.Trim(), Icon = icon, Now = DateTime.Now.ToString("O") });
+    }
+
+    public async Task UpdateShelfAsync(long id, string name, string icon)
+    {
+        await using var conn = CreateConnection();
+        await conn.ExecuteAsync("UPDATE LibraryShelves SET Name = @Name, Icon = @Icon WHERE Id = @Id;",
+            new { Id = id, Name = name.Trim(), Icon = icon });
+    }
+
+    public async Task DeleteShelfAsync(long id)
+    {
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        // User rule: books from deleted shelf remain in category as unallocated to shelves
+        await conn.ExecuteAsync("UPDATE Books SET ShelfId = NULL WHERE ShelfId = @Id;", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM LibraryShelves WHERE Id = @Id;", new { Id = id }, tx);
+        await tx.CommitAsync();
+    }
+
+    public async Task AssignBookHierarchyAsync(long bookId, long? sectionId, long? categoryId, long? shelfId)
+    {
+        await using var conn = CreateConnection();
+        await conn.ExecuteAsync("""
+            UPDATE Books
+            SET SectionId = @SectionId, CategoryId = @CategoryId, ShelfId = @ShelfId
+            WHERE Id = @BookId;
+            """, new { BookId = bookId, SectionId = sectionId, CategoryId = categoryId, ShelfId = shelfId });
+    }
+
+    public async Task DeleteBooksBatchAsync(IEnumerable<long> bookIds, bool deletePhysicalFiles)
+    {
+        var idList = bookIds.ToList();
+        if (idList.Count == 0) return;
+
+        await using var conn = CreateConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+
+        foreach (var id in idList)
+        {
+            if (deletePhysicalFiles)
+            {
+                var path = await conn.ExecuteScalarAsync<string>("SELECT FilePath FROM Books WHERE Id = @Id;", new { Id = id }, tx);
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    try
+                    {
+                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
+                            path,
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    }
+                    catch
+                    {
+                        try { File.Delete(path); } catch { }
+                    }
+                }
+            }
+
+            await conn.ExecuteAsync("DELETE FROM BooksFts WHERE BookId = @BookId;", new { BookId = id.ToString() }, tx);
+            await conn.ExecuteAsync("DELETE FROM BookShelves WHERE BookId = @Id;", new { Id = id }, tx);
+            await conn.ExecuteAsync("DELETE FROM Annotations WHERE BookId = @Id;", new { Id = id }, tx);
+            await conn.ExecuteAsync("DELETE FROM RelatedItems WHERE BookId = @Id OR RelatedBookId = @Id;", new { Id = id }, tx);
+            await conn.ExecuteAsync("DELETE FROM Books WHERE Id = @Id;", new { Id = id }, tx);
+        }
+
+        await tx.CommitAsync();
     }
 }

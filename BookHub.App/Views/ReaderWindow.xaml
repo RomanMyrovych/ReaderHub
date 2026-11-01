@@ -652,6 +652,48 @@
                                              Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
                                              IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
                                              SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                    <!-- Sticky-Note Bookmark Overlay on Single Page -->
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,20,20,0"
+                                            Width="{Binding StickyBookmarkWidth}"
+                                            MinHeight="50"
+                                            CornerRadius="6"
+                                            Visibility="{Binding CurrentPageBookmark, Converter={StaticResource NullToVisibilityConverter}}"
+                                            BorderThickness="2"
+                                            BorderBrush="{Binding CurrentPageBookmark.StickyBorderColorHex}"
+                                            Background="{Binding CurrentPageBookmark.StickyBgColorHex}"
+                                            Padding="10,8"
+                                            ToolTip="Закладка на сторінці">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding CurrentPageBookmark.QuoteText}"
+                                                       FontStyle="Italic"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       TextWrapping="Wrap"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" />
+                                            <Button Grid.Column="1"
+                                                    Content="✕"
+                                                    Command="{Binding DataContext.DeleteBookmarkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding CurrentPageBookmark}"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Padding="5,1"
+                                                    MinHeight="20"
+                                                    MinWidth="20"
+                                                    FontSize="10"
+                                                    VerticalAlignment="Top"
+                                                    Margin="6,0,0,0"
+                                                    Opacity="0.8"
+                                                    ToolTip="Видалити закладку" />
+                                        </Grid>
+                                    </Border>
                                 </Grid>
                             </Border>
 
@@ -677,6 +719,48 @@
                                                  Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
                                                  IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                        <!-- Sticky-Note Bookmark Overlay on Spread Left Page -->
+                                        <Border HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0,20,16,0"
+                                                Width="{Binding StickySpreadBookmarkWidth}"
+                                                MinHeight="50"
+                                                CornerRadius="6"
+                                                Visibility="{Binding CurrentPageBookmark, Converter={StaticResource NullToVisibilityConverter}}"
+                                                BorderThickness="2"
+                                                BorderBrush="{Binding CurrentPageBookmark.StickyBorderColorHex}"
+                                                Background="{Binding CurrentPageBookmark.StickyBgColorHex}"
+                                                Padding="10,8"
+                                                ToolTip="Закладка на сторінці">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding CurrentPageBookmark.QuoteText}"
+                                                           FontStyle="Italic"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="11.5"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           TextWrapping="Wrap"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                                <Button Grid.Column="1"
+                                                        Content="✕"
+                                                        Command="{Binding DataContext.DeleteBookmarkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding CurrentPageBookmark}"
+                                                        Style="{StaticResource ModernButtonStyle}"
+                                                        Padding="5,1"
+                                                        MinHeight="20"
+                                                        MinWidth="20"
+                                                        FontSize="10"
+                                                        VerticalAlignment="Top"
+                                                        Margin="6,0,0,0"
+                                                        Opacity="0.8"
+                                                        ToolTip="Видалити закладку" />
+                                            </Grid>
+                                        </Border>
                                     </Grid>
                                 </Border>
                                 <Border Background="{DynamicResource ReaderPageBgBrush}" CornerRadius="2">
@@ -698,6 +782,48 @@
                                                  Cursor="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToCursorConverter}}"
                                                  IsHitTestVisible="{Binding DataContext.IsTextSelectionMode, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  SelectionChanged="ReaderTextBox_SelectionChanged" />
+                                        <!-- Sticky-Note Bookmark Overlay on Spread Right Page -->
+                                        <Border HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0,20,16,0"
+                                                Width="{Binding StickySpreadBookmarkWidth}"
+                                                MinHeight="50"
+                                                CornerRadius="6"
+                                                Visibility="{Binding SecondSpreadPageBookmark, Converter={StaticResource NullToVisibilityConverter}}"
+                                                BorderThickness="2"
+                                                BorderBrush="{Binding SecondSpreadPageBookmark.StickyBorderColorHex}"
+                                                Background="{Binding SecondSpreadPageBookmark.StickyBgColorHex}"
+                                                Padding="10,8"
+                                                ToolTip="Закладка на сторінці">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding SecondSpreadPageBookmark.QuoteText}"
+                                                           FontStyle="Italic"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="11.5"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           TextWrapping="Wrap"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                                <Button Grid.Column="1"
+                                                        Content="✕"
+                                                        Command="{Binding DataContext.DeleteBookmarkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding SecondSpreadPageBookmark}"
+                                                        Style="{StaticResource ModernButtonStyle}"
+                                                        Padding="5,1"
+                                                        MinHeight="20"
+                                                        MinWidth="20"
+                                                        FontSize="10"
+                                                        VerticalAlignment="Top"
+                                                        Margin="6,0,0,0"
+                                                        Opacity="0.8"
+                                                        ToolTip="Видалити закладку" />
+                                            </Grid>
+                                        </Border>
                                     </Grid>
                                 </Border>
                             </StackPanel>

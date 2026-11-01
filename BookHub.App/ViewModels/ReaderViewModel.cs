@@ -99,6 +99,19 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
     public ObservableCollection<AnnotationRecord> Annotations { get; } = [];
     public ObservableCollection<ContinuousPageViewModel> ContinuousWindowPages { get; } = [];
 
+    public AnnotationRecord? CurrentPageBookmark => Annotations.FirstOrDefault(a => a.IsBookmark && a.PageNumber == CurrentPage);
+    public AnnotationRecord? SecondSpreadPageBookmark => CurrentPage + 1 <= TotalPages ? Annotations.FirstOrDefault(a => a.IsBookmark && a.PageNumber == CurrentPage + 1) : null;
+    public double StickyBookmarkWidth => Math.Max(160, ComputedPageDisplayWidth * 0.30);
+    public double StickySpreadBookmarkWidth => Math.Max(140, ComputedSpreadPageDisplayWidth * 0.30);
+
+    public void NotifyBookmarkChanged()
+    {
+        OnPropertyChanged(nameof(CurrentPageBookmark));
+        OnPropertyChanged(nameof(SecondSpreadPageBookmark));
+        OnPropertyChanged(nameof(StickyBookmarkWidth));
+        OnPropertyChanged(nameof(StickySpreadBookmarkWidth));
+    }
+
     public string ZoomPercentDisplay => ZoomMode switch
     {
         "FitWidth" => "↔ За шириною",
@@ -259,6 +272,7 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
                 return;
             Annotations.Clear();
             foreach (var a in existingAnns) Annotations.Add(a);
+            NotifyBookmarkChanged();
 
             string ext = Book.Extension.ToLowerInvariant();
             if (ext == ".pdf")
@@ -361,6 +375,21 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
             SavedScrollOffset = 0;
         }
         _ = RefreshActiveViewAsync();
+    }
+
+    partial void OnCurrentPageChanged(int value)
+    {
+        NotifyBookmarkChanged();
+    }
+
+    partial void OnComputedPageDisplayWidthChanged(double value)
+    {
+        OnPropertyChanged(nameof(StickyBookmarkWidth));
+    }
+
+    partial void OnComputedSpreadPageDisplayWidthChanged(double value)
+    {
+        OnPropertyChanged(nameof(StickySpreadBookmarkWidth));
     }
 
     private void EnsureContinuousPageItems()
@@ -1357,21 +1386,46 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             }
         }
 
-        var ann = new AnnotationRecord
+        var existing = ActiveTab.Annotations.FirstOrDefault(a => a.IsBookmark && a.PageNumber == ActiveTab.CurrentPage);
+        if (existing != null)
         {
-            BookId = ActiveTab.Book.Id,
-            PageNumber = ActiveTab.CurrentPage,
-            ScrollOffset = ActiveTab.SavedScrollOffset,
-            QuoteText = conciseQuote,
-            CommentText = "Швидка закладка",
-            HighlightColor = "#38BDF8",
-            IsBookmark = true,
-            CreatedAt = DateTime.Now
-        };
+            existing.QuoteText = conciseQuote;
+            existing.HighlightColor = SelectedHighlightColor;
+            await _database.UpdateAnnotationAsync(existing);
+        }
+        else
+        {
+            var ann = new AnnotationRecord
+            {
+                BookId = ActiveTab.Book.Id,
+                PageNumber = ActiveTab.CurrentPage,
+                ScrollOffset = ActiveTab.SavedScrollOffset,
+                QuoteText = conciseQuote,
+                CommentText = "Швидка закладка",
+                HighlightColor = SelectedHighlightColor,
+                IsBookmark = true,
+                CreatedAt = DateTime.Now
+            };
 
-        ann.Id = await _database.AddAnnotationAsync(ann);
-        ActiveTab.Annotations.Add(ann);
+            ann.Id = await _database.AddAnnotationAsync(ann);
+            ActiveTab.Annotations.Add(ann);
+        }
+
+        ActiveTab.NotifyBookmarkChanged();
         IsAnnotationsVisible = true;
+    }
+
+    [RelayCommand]
+    private async Task DeleteBookmarkAsync(AnnotationRecord? ann)
+    {
+        if (ActiveTab == null) return;
+        var target = ann ?? ActiveTab.CurrentPageBookmark;
+        if (target != null)
+        {
+            await _database.DeleteAnnotationAsync(target.Id);
+            ActiveTab.Annotations.Remove(target);
+            ActiveTab.NotifyBookmarkChanged();
+        }
     }
 
     [RelayCommand]
@@ -1418,6 +1472,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
         if (ann == null || ActiveTab == null) return;
         await _database.DeleteAnnotationAsync(ann.Id);
         ActiveTab.Annotations.Remove(ann);
+        ActiveTab.NotifyBookmarkChanged();
     }
 
     [RelayCommand]

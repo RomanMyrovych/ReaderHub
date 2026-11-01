@@ -10,16 +10,55 @@ using Microsoft.Win32;
 
 namespace BookHub.App.ViewModels;
 
-public sealed record WizardLanguageCard(string Code, string FlagEmoji, string NativeTitle, string Subtitle);
+public sealed partial class WizardLanguageCard : ObservableObject
+{
+    public string Code { get; }
+    public string FlagEmoji { get; }
+    public string NativeTitle { get; }
+    public string Subtitle { get; }
+    [ObservableProperty] private bool _isSelected;
 
-public sealed record WizardThemeCard(
-    string ThemeName,
-    string DisplayTitle,
-    string Subtitle,
-    Brush BgPreviewBrush,
-    Brush CardPreviewBrush,
-    Brush AccentPreviewBrush,
-    Brush TextPreviewBrush);
+    public WizardLanguageCard(string code, string flagEmoji, string nativeTitle, string subtitle, bool isSelected = false)
+    {
+        Code = code;
+        FlagEmoji = flagEmoji;
+        NativeTitle = nativeTitle;
+        Subtitle = subtitle;
+        _isSelected = isSelected;
+    }
+}
+
+public sealed partial class WizardThemeCard : ObservableObject
+{
+    public string ThemeName { get; }
+    public string DisplayTitle { get; }
+    public string Subtitle { get; }
+    public Brush BgPreviewBrush { get; }
+    public Brush CardPreviewBrush { get; }
+    public Brush AccentPreviewBrush { get; }
+    public Brush TextPreviewBrush { get; }
+    [ObservableProperty] private bool _isSelected;
+
+    public WizardThemeCard(
+        string themeName,
+        string displayTitle,
+        string subtitle,
+        Brush bgPreviewBrush,
+        Brush cardPreviewBrush,
+        Brush accentPreviewBrush,
+        Brush textPreviewBrush,
+        bool isSelected = false)
+    {
+        ThemeName = themeName;
+        DisplayTitle = displayTitle;
+        Subtitle = subtitle;
+        BgPreviewBrush = bgPreviewBrush;
+        CardPreviewBrush = cardPreviewBrush;
+        AccentPreviewBrush = accentPreviewBrush;
+        TextPreviewBrush = textPreviewBrush;
+        _isSelected = isSelected;
+    }
+}
 
 public partial class WelcomeWizardViewModel : ObservableObject
 {
@@ -153,6 +192,24 @@ public partial class WelcomeWizardViewModel : ObservableObject
 
         LocalizationService.ApplyLanguage(_selectedLanguageCode);
         ThemeManagerService.ApplyTheme(_selectedThemeName);
+        UpdateLanguageCardsSelection();
+        UpdateThemeCardsSelection();
+    }
+
+    private void UpdateLanguageCardsSelection()
+    {
+        foreach (var card in LanguageCards)
+        {
+            card.IsSelected = string.Equals(card.Code, SelectedLanguageCode, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private void UpdateThemeCardsSelection()
+    {
+        foreach (var card in FeaturedThemeCards)
+        {
+            card.IsSelected = string.Equals(card.ThemeName, SelectedThemeName, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     public async Task LoadInitialFoldersAsync()
@@ -185,6 +242,7 @@ public partial class WelcomeWizardViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(value))
         {
             LocalizationService.ApplyLanguage(value);
+            UpdateLanguageCardsSelection();
             RefreshSummaryProperties();
         }
     }
@@ -194,6 +252,7 @@ public partial class WelcomeWizardViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(value))
         {
             ThemeManagerService.ApplyTheme(value);
+            UpdateThemeCardsSelection();
             RefreshSummaryProperties();
         }
     }

@@ -140,6 +140,27 @@ public class BookRecord : INotifyPropertyChanged
     private string? _virtualShelfName;
     public string? VirtualShelfName { get => _virtualShelfName; set => Set(ref _virtualShelfName, value); }
 
+    private long? _sectionId;
+    public long? SectionId { get => _sectionId; set => Set(ref _sectionId, value); }
+
+    private string? _sectionName;
+    public string? SectionName { get => _sectionName; set => Set(ref _sectionName, value); }
+
+    private long? _categoryId;
+    public long? CategoryId { get => _categoryId; set => Set(ref _categoryId, value); }
+
+    private string? _categoryName;
+    public string? CategoryName { get => _categoryName; set => Set(ref _categoryName, value); }
+
+    private long? _shelfId;
+    public long? ShelfId { get => _shelfId; set => Set(ref _shelfId, value); }
+
+    private string? _shelfName;
+    public string? ShelfName { get => _shelfName; set => Set(ref _shelfName, value); }
+
+    private bool _isSelectedForEdit;
+    public bool IsSelectedForEdit { get => _isSelectedForEdit; set => Set(ref _isSelectedForEdit, value); }
+
     public string FormattedSize => FormatBytes(FileSize);
     public string FormatBadge => Extension.TrimStart('.').ToUpperInvariant();
     public string StatusDisplay => Status switch
@@ -179,6 +200,24 @@ public class AnnotationRecord
     public string HighlightColor { get; set; } = "#FACC15";
     public bool IsBookmark { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string StickyBgColorHex
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(HighlightColor) && HighlightColor.StartsWith('#'))
+            {
+                var hex = HighlightColor.TrimStart('#');
+                if (hex.Length == 6) return $"#40{hex}";
+                if (hex.Length == 8) return $"#40{hex[2..]}";
+            }
+            return "#4038BDF8";
+        }
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string StickyBorderColorHex => string.IsNullOrWhiteSpace(HighlightColor) ? "#38BDF8" : HighlightColor;
 }
 
 public class TocItem
@@ -206,4 +245,38 @@ public class ParsedBookMetadata
     public string? Series { get; set; }
     public int? VolumeNumber { get; set; }
     public string? DetectedEncoding { get; set; } = "UTF-8";
+}
+
+public class LibrarySection
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Icon { get; set; } = "📁";
+    public int SortOrder { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public int BookCount { get; set; }
+    public List<LibraryCategory> Categories { get; set; } = [];
+}
+
+public class LibraryCategory
+{
+    public long Id { get; set; }
+    public long SectionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Icon { get; set; } = "📂";
+    public int SortOrder { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public int BookCount { get; set; }
+    public List<LibraryShelf> Shelves { get; set; } = [];
+}
+
+public class LibraryShelf
+{
+    public long Id { get; set; }
+    public long CategoryId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Icon { get; set; } = "📖";
+    public int SortOrder { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public int BookCount { get; set; }
 }

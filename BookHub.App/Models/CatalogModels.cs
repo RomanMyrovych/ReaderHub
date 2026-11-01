@@ -78,6 +78,7 @@ public class UserSettings
     public string LastReaderViewMode { get; set; } = "ContinuousVertical";
     public string ThemeName { get; set; } = "Obsidian Dark";
     public bool IsTableViewMode { get; set; } = false;
+    public double ManagementZoomScale { get; set; } = 1.0;
     public List<string> HiddenTableColumns { get; set; } = [];
     public string SelectedFormat { get; set; } = "ALL";
     public string SelectedStatusFilter { get; set; } = "ALL";

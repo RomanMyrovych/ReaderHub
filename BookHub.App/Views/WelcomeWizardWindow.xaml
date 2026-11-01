@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:BookHub.App.ViewModels"
-        Title="ReaderHub v3.62 — Майстер першого запуску"
+        Title="ReaderHub v3.65-beta — Майстер першого запуску"
         Icon="pack://application:,,,/Assets/AllReaderBook.ico"
         Width="840" Height="575"
         WindowStartupLocation="CenterScreen"
@@ -13,6 +13,60 @@
         AllowDrop="True"
         PreviewDragOver="FoldersDropZone_PreviewDragOver"
         Drop="FoldersDropZone_Drop">
+    <Window.Resources>
+        <Style x:Key="WizardOptionCardRadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="CardBorder"
+                                Background="{DynamicResource BgSecondaryBrush}"
+                                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                BorderThickness="1.5"
+                                CornerRadius="8"
+                                Padding="14,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="RadioOuter"
+                                        Grid.Column="0"
+                                        Width="20" Height="20"
+                                        CornerRadius="10"
+                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                        BorderThickness="2"
+                                        Background="Transparent"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,12,0">
+                                    <Ellipse x:Name="RadioDot"
+                                             Width="10" Height="10"
+                                             Fill="{DynamicResource AccentBrush}"
+                                             Visibility="Collapsed" />
+                                </Border>
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="CardBorder" Property="BorderThickness" Value="2" />
+                                <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                <Setter TargetName="RadioOuter" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="RadioDot" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Border BorderBrush="{DynamicResource AccentBrush}"
             BorderThickness="1.5"
             Background="{DynamicResource BgPrimaryBrush}">
@@ -160,7 +214,7 @@
                                 <Image Source="pack://application:,,,/Assets/AllReaderBook.ico" Width="44" Height="44" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="ReaderHub v3.62" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="ReaderHub v3.65-beta" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 <TextBlock Text="{DynamicResource Loc_Wiz_Slogan}"
                                            FontSize="13.5"
                                            Foreground="{DynamicResource AccentBrush}"
@@ -186,15 +240,52 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:WizardLanguageCard}">
                                 <Button Margin="4"
-                                        Padding="10,10"
-                                        Style="{StaticResource ModernButtonStyle}"
+                                        Padding="0"
+                                        FocusVisualStyle="{x:Null}"
                                         Command="{Binding DataContext.SelectLanguageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding Code}">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding FlagEmoji}" FontSize="22" HorizontalAlignment="Center" Margin="0,0,0,4" />
-                                        <TextBlock Text="{Binding NativeTitle}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
-                                    </StackPanel>
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="CardBorder"
+                                                    Background="{DynamicResource BgSecondaryBrush}"
+                                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                    BorderThickness="1.5"
+                                                    CornerRadius="8"
+                                                    Padding="10,12"
+                                                    Cursor="Hand">
+                                                <Grid>
+                                                    <Border x:Name="CheckBadge"
+                                                            Width="18" Height="18"
+                                                            CornerRadius="9"
+                                                            Background="{DynamicResource AccentBrush}"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Margin="0,-6,-4,0"
+                                                            Visibility="Collapsed">
+                                                        <TextBlock Text="✓" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FlagEmoji}" FontSize="22" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                                        <TextBlock x:Name="TitleText" Text="{Binding NativeTitle}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                                    <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding Path=DataContext.IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    <Setter TargetName="CardBorder" Property="BorderThickness" Value="2.5" />
+                                                    <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                                    <Setter TargetName="CheckBadge" Property="Visibility" Value="Visible" />
+                                                    <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -225,21 +316,58 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:WizardThemeCard}">
                                 <Button Margin="4"
-                                        Padding="12,12"
-                                        Style="{StaticResource ModernButtonStyle}"
+                                        Padding="0"
+                                        FocusVisualStyle="{x:Null}"
                                         Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding ThemeName}">
-                                    <StackPanel>
-                                        <!-- Color Circles Swatch Preview -->
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
-                                            <Ellipse Width="24" Height="24" Fill="{Binding BgPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
-                                            <Ellipse Width="24" Height="24" Fill="{Binding CardPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
-                                            <Ellipse Width="24" Height="24" Fill="{Binding AccentPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
-                                            <Ellipse Width="24" Height="24" Fill="{Binding TextPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" />
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding DisplayTitle}" FontSize="13.5" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,3,0,0" />
-                                    </StackPanel>
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="CardBorder"
+                                                    Background="{DynamicResource BgSecondaryBrush}"
+                                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
+                                                    BorderThickness="1.5"
+                                                    CornerRadius="8"
+                                                    Padding="12,12"
+                                                    Cursor="Hand">
+                                                <Grid>
+                                                    <Border x:Name="CheckBadge"
+                                                            Width="18" Height="18"
+                                                            CornerRadius="9"
+                                                            Background="{DynamicResource AccentBrush}"
+                                                            HorizontalAlignment="Right"
+                                                            VerticalAlignment="Top"
+                                                            Margin="0,-6,-4,0"
+                                                            Visibility="Collapsed">
+                                                        <TextBlock Text="✓" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <StackPanel>
+                                                        <!-- Color Circles Swatch Preview -->
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+                                                            <Ellipse Width="24" Height="24" Fill="{Binding BgPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
+                                                            <Ellipse Width="24" Height="24" Fill="{Binding CardPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
+                                                            <Ellipse Width="24" Height="24" Fill="{Binding AccentPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" Margin="0,0,5,0" />
+                                                            <Ellipse Width="24" Height="24" Fill="{Binding TextPreviewBrush}" Stroke="#6B7280" StrokeThickness="1" />
+                                                        </StackPanel>
+                                                        <TextBlock x:Name="TitleText" Text="{Binding DisplayTitle}" FontSize="13.5" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,3,0,0" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                                    <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding Path=DataContext.IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                    <Setter TargetName="CardBorder" Property="BorderThickness" Value="2.5" />
+                                                    <Setter TargetName="CardBorder" Property="Background" Value="{DynamicResource BgCardHoverBrush}" />
+                                                    <Setter TargetName="CheckBadge" Property="Visibility" Value="Visible" />
+                                                    <Setter TargetName="TitleText" Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -258,7 +386,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="220" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Повний список із 10 колірних схем BookHub Pro:" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Grid.Column="0" Text="Повний список із 10 колірних схем ReaderHub:" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding AllThemeNames}"
                                       SelectedItem="{Binding SelectedThemeName}"
@@ -271,37 +399,23 @@
                         <TextBlock Text="{DynamicResource Loc_Wiz_Step2DensityLabel}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
                         <UniformGrid Columns="2">
                             <RadioButton GroupName="DensityGroup"
+                                         Style="{StaticResource WizardOptionCardRadioButtonStyle}"
                                          IsChecked="{Binding IsGridViewMode}"
-                                         Margin="0,0,8,0"
-                                         Cursor="Hand">
-                                <Border Background="{DynamicResource BgSecondaryBrush}"
-                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="14,12"
-                                        Width="345">
-                                    <StackPanel>
-                                        <TextBlock Text="{DynamicResource Loc_Wiz_GridModeTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{DynamicResource Loc_Wiz_GridModeDesc}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                    </StackPanel>
-                                </Border>
+                                         Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Loc_Wiz_GridModeTitle}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{DynamicResource Loc_Wiz_GridModeDesc}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                </StackPanel>
                             </RadioButton>
 
                             <RadioButton GroupName="DensityGroup"
+                                         Style="{StaticResource WizardOptionCardRadioButtonStyle}"
                                          IsChecked="{Binding IsTableViewMode}"
-                                         Margin="8,0,0,0"
-                                         Cursor="Hand">
-                                <Border Background="{DynamicResource BgSecondaryBrush}"
-                                        BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="14,12"
-                                        Width="345">
-                                    <StackPanel>
-                                        <TextBlock Text="{DynamicResource Loc_Wiz_TableModeTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{DynamicResource Loc_Wiz_TableModeDesc}" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                    </StackPanel>
-                                </Border>
+                                         Margin="6,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource Loc_Wiz_TableModeTitle}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{DynamicResource Loc_Wiz_TableModeDesc}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                </StackPanel>
                             </RadioButton>
                         </UniformGrid>
                     </StackPanel>
@@ -432,36 +546,22 @@
                     <!-- Portable vs Standard Storage Mode Cards -->
                     <StackPanel Grid.Row="1" Margin="0,0,0,14">
                         <RadioButton GroupName="StorageModeGroup"
+                                     Style="{StaticResource WizardOptionCardRadioButtonStyle}"
                                      IsChecked="{Binding IsPortableStorageMode}"
-                                     Margin="0,0,0,10"
-                                     Cursor="Hand">
-                            <Border Background="{DynamicResource BgSecondaryBrush}"
-                                    BorderBrush="{DynamicResource AccentBrush}"
-                                    BorderThickness="1.5"
-                                    CornerRadius="8"
-                                    Padding="16,12"
-                                    Width="740">
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource Loc_Wiz_PortableTitle}" FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                    <TextBlock Text="{DynamicResource Loc_Wiz_PortableDesc}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                </StackPanel>
-                            </Border>
+                                     Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Loc_Wiz_PortableTitle}" FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{DynamicResource Loc_Wiz_PortableDesc}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
                         </RadioButton>
 
                         <RadioButton GroupName="StorageModeGroup"
-                                     IsChecked="{Binding IsStandardStorageMode}"
-                                     Cursor="Hand">
-                            <Border Background="{DynamicResource BgSecondaryBrush}"
-                                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="8"
-                                    Padding="16,12"
-                                    Width="740">
-                                <StackPanel>
-                                    <TextBlock Text="{DynamicResource Loc_Wiz_StandardTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                    <TextBlock Text="{DynamicResource Loc_Wiz_StandardDesc}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                                </StackPanel>
-                            </Border>
+                                     Style="{StaticResource WizardOptionCardRadioButtonStyle}"
+                                     IsChecked="{Binding IsStandardStorageMode}">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource Loc_Wiz_StandardTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{DynamicResource Loc_Wiz_StandardDesc}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
                         </RadioButton>
                     </StackPanel>
 

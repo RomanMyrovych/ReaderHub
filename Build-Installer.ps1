@@ -7,10 +7,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $appProject = Join-Path $PSScriptRoot "BookHub.App\BookHub.App.csproj"
-$readerProject = Join-Path $PSScriptRoot "BookHub.Reader\AllReaderBook.csproj"
-$payloadDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerPayload_v3.62"
+$readerProject = Join-Path $PSScriptRoot "AllReaderBook\AllReaderBook.csproj"
+$payloadDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerPayload_v3.65"
 $readerPayloadDir = Join-Path $PSScriptRoot "Publish\AllReaderBook_InstallerPayload_v0.9.02-beta"
-$installerSettingsDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerSettings_v3.62"
+$installerSettingsDir = Join-Path $PSScriptRoot "Publish\ReaderHub_InstallerSettings_v3.65"
 
 if (-not (Test-Path $readerProject)) {
     throw "Reader project is missing: $readerProject"
@@ -174,18 +174,27 @@ $outputDir = Join-Path $PSScriptRoot "Publish\Installer"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 Push-Location $PSScriptRoot
 try {
-    & $compiler "/Qp" "installer_allreaderbook.iss"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Inno Setup compilation for installer_allreaderbook.iss failed with exit code $LASTEXITCODE"
+    $readerIss = Join-Path $PSScriptRoot "AllReaderBook\installer_allreaderbook.iss"
+    if (Test-Path $readerIss) {
+        Push-Location (Join-Path $PSScriptRoot "AllReaderBook")
+        try {
+            & $compiler "/Qp" "installer_allreaderbook.iss"
+            if ($LASTEXITCODE -ne 0) {
+                throw "Inno Setup compilation for installer_allreaderbook.iss failed with exit code $LASTEXITCODE"
+            }
+            Write-Host "[SUCCESS] Standalone AllReaderBook Installer created in AllReaderBook\Publish\Installer" -ForegroundColor Green
+        }
+        finally {
+            Pop-Location
+        }
     }
-    Write-Host "[SUCCESS] Standalone AllReaderBook Installer created: $(Join-Path $outputDir 'AllReaderBook_Setup_v0.9.02-beta_x64.exe')" -ForegroundColor Green
 
     if (-not $ReaderOnly) {
         & $compiler "/Qp" "installer.iss"
         if ($LASTEXITCODE -ne 0) {
             throw "Inno Setup compilation for installer.iss failed with exit code $LASTEXITCODE"
         }
-        Write-Host "[SUCCESS] ReaderHub Suite Installer created: $(Join-Path $outputDir 'ReaderHub_Setup_v3.62_x64.exe')" -ForegroundColor Green
+        Write-Host "[SUCCESS] ReaderHub Suite Installer created: $(Join-Path $outputDir 'ReaderHub_Setup_v3.65_x64.exe')" -ForegroundColor Green
     }
 }
 finally {

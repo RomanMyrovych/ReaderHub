@@ -7,7 +7,7 @@
 param(
     [string]$Runtime = "win-x64",
     [string]$Configuration = "Release",
-    [string]$OutputDir = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62",
+    [string]$OutputDir = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.65",
     [switch]$IncludeSampleLibrary
 )
 
@@ -27,12 +27,12 @@ New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME, $env:NUGET_PACKA
 Get-ChildItem -Path $OutputDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Building ReaderHub v3.62 + AllReaderBook v0.9.02-beta ($Runtime)" -ForegroundColor Cyan
+Write-Host " Building ReaderHub v3.65-beta + AllReaderBook v0.9.02-beta ($Runtime)" -ForegroundColor Cyan
 Write-Host " Output Directory: $OutputDir" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 2. Publish AllReaderBook (ReadyToRun) and ReaderHub into the shared directory
-dotnet publish "$PSScriptRoot\BookHub.Reader\AllReaderBook.csproj" `
+dotnet publish "$PSScriptRoot\AllReaderBook\AllReaderBook.csproj" `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
@@ -86,14 +86,14 @@ if ($IncludeSampleLibrary -and (Test-Path "$PSScriptRoot\SampleLibrary")) {
     Write-Host "[OK] Included SampleLibrary demo collection" -ForegroundColor Green
 }
 
-$zipPath = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62_x64.zip"
-$zipPathWin = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.62_$Runtime.zip"
+$zipPath = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.65_x64.zip"
+$zipPathWin = "$PSScriptRoot\Publish\ReaderHub_Portable_v3.65_$Runtime.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 if (Test-Path $zipPathWin) { Remove-Item $zipPathWin -Force }
 Compress-Archive -Path "$OutputDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
 Copy-Item -Path $zipPath -Destination $zipPathWin -Force
 
 Write-Host ""
-Write-Host "[SUCCESS] ReaderHub_Portable_v3.62 created at:" -ForegroundColor Green
+Write-Host "[SUCCESS] ReaderHub_Portable_v3.65 created at:" -ForegroundColor Green
 Write-Host "   $OutputDir" -ForegroundColor Yellow
 Write-Host "   $zipPath" -ForegroundColor Yellow
