@@ -26,6 +26,7 @@ public partial class ContinuousPageViewModel : ObservableObject
     public int PageNumber { get; init; }
     [ObservableProperty] private BitmapSource? _pageBitmap;
     [ObservableProperty] private string _pageText = string.Empty;
+    [ObservableProperty] private AnnotationRecord? _bookmark;
 }
 
 public partial class DocumentTabViewModel : ObservableObject, IDisposable
@@ -99,8 +100,17 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
     public ObservableCollection<AnnotationRecord> Annotations { get; } = [];
     public ObservableCollection<ContinuousPageViewModel> ContinuousWindowPages { get; } = [];
 
-    public AnnotationRecord? CurrentPageBookmark => Annotations.FirstOrDefault(a => a.IsBookmark && a.PageNumber == CurrentPage);
-    public AnnotationRecord? SecondSpreadPageBookmark => CurrentPage + 1 <= TotalPages ? Annotations.FirstOrDefault(a => a.IsBookmark && a.PageNumber == CurrentPage + 1) : null;
+    public AnnotationRecord? FindBookmarkForPage(int page)
+    {
+        return Annotations.LastOrDefault(a =>
+            (a.IsBookmark ||
+             (!string.IsNullOrEmpty(a.CommentText) && a.CommentText.Contains("закладк", StringComparison.OrdinalIgnoreCase)) ||
+             (!string.IsNullOrEmpty(a.QuoteText) && a.QuoteText.Contains("закладк", StringComparison.OrdinalIgnoreCase))) &&
+            a.PageNumber == page);
+    }
+
+    public AnnotationRecord? CurrentPageBookmark => FindBookmarkForPage(CurrentPage);
+    public AnnotationRecord? SecondSpreadPageBookmark => CurrentPage + 1 <= TotalPages ? FindBookmarkForPage(CurrentPage + 1) : null;
     public double StickyBookmarkWidth => Math.Max(160, ComputedPageDisplayWidth * 0.30);
     public double StickySpreadBookmarkWidth => Math.Max(140, ComputedSpreadPageDisplayWidth * 0.30);
 
@@ -110,6 +120,10 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SecondSpreadPageBookmark));
         OnPropertyChanged(nameof(StickyBookmarkWidth));
         OnPropertyChanged(nameof(StickySpreadBookmarkWidth));
+        foreach (var p in ContinuousWindowPages)
+        {
+            p.Bookmark = FindBookmarkForPage(p.PageNumber);
+        }
     }
 
     public string ZoomPercentDisplay => ZoomMode switch
@@ -403,7 +417,8 @@ public partial class DocumentTabViewModel : ObservableObject, IDisposable
             ContinuousWindowPages.Add(new ContinuousPageViewModel
             {
                 PageNumber = page,
-                PageText = IsTextMode && page <= _textPages.Count ? _textPages[page - 1] : string.Empty
+                PageText = IsTextMode && page <= _textPages.Count ? _textPages[page - 1] : string.Empty,
+                Bookmark = FindBookmarkForPage(page)
             });
         }
     }
@@ -1419,7 +1434,7 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
     private async Task DeleteBookmarkAsync(AnnotationRecord? ann)
     {
         if (ActiveTab == null) return;
-        var target = ann ?? ActiveTab.CurrentPageBookmark;
+        var target = ann ?? ActiveTab.CurrentPageBookmark ?? ActiveTab.FindBookmarkForPage(ActiveTab.CurrentPage);
         if (target != null)
         {
             await _database.DeleteAnnotationAsync(target.Id);
@@ -1447,15 +1462,19 @@ public partial class ReaderViewModel : ObservableObject, IDisposable
             quote = quote[..120].TrimEnd() + "...";
         }
 
+        bool isBookmark = string.IsNullOrWhiteSpace(NewCommentInput) ||
+                          NewCommentInput.Contains("закладк", StringComparison.OrdinalIgnoreCase) ||
+                          NewCommentInput.Contains("bookmark", StringComparison.OrdinalIgnoreCase);
+
         var ann = new AnnotationRecord
         {
             BookId = ActiveTab.Book.Id,
             PageNumber = ActiveTab.CurrentPage,
             ScrollOffset = ActiveTab.SavedScrollOffset,
             QuoteText = quote,
-            CommentText = NewCommentInput.Trim(),
+            CommentText = string.IsNullOrWhiteSpace(NewCommentInput.Trim()) ? "🔖 Закладка" : NewCommentInput.Trim(),
             HighlightColor = SelectedHighlightColor,
-            IsBookmark = false,
+            IsBookmark = isBookmark,
             CreatedAt = DateTime.Now
         };
 

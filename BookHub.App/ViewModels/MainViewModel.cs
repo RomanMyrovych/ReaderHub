@@ -936,6 +936,34 @@ public partial class MainViewModel : ObservableObject, IDisposable
             SelectedSmartCollection = null;
             _activeShelfBookIds = null;
             _activeSmartCollection = null;
+
+            // Reset 4-level hierarchy filters (Library -> Section -> Category -> Shelf)
+            SelectedFilterSection = null;
+            FilterCategories.Clear();
+            SelectedFilterCategory = null;
+            FilterShelves.Clear();
+            SelectedFilterShelf = null;
+
+            // Reset multi-criteria advanced search filters
+            AdvSearchTitle = string.Empty;
+            AdvSearchAuthor = string.Empty;
+            AdvSearchFormat = "ALL";
+            AdvSearchTag = string.Empty;
+            AdvPageOp = "Всі";
+            AdvPageValue = null;
+            AdvSizeOp = "Всі";
+            AdvSizeMbValue = null;
+
+            // Reset sort order
+            SelectedSortOrder = "Recent";
+
+            _settingsService.Current.SelectedFormat = "ALL";
+            _settingsService.Current.SelectedStatusFilter = "ALL";
+            _settingsService.Current.SelectedCategory = "Усі категорії";
+            _settingsService.Current.SelectedAuthor = "Усі автори";
+            _settingsService.Current.SelectedTag = "Усі теги";
+            _settingsService.Current.SortOrder = "Recent";
+            _settingsService.Save();
         }
         finally
         {
